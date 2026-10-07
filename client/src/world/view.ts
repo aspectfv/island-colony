@@ -1,6 +1,7 @@
 import {
   Color,
   DirectionalLight,
+  Fog,
   HemisphereLight,
   PerspectiveCamera,
   Scene,
@@ -19,13 +20,14 @@ export function createWorldView(canvas: HTMLCanvasElement): WorldView {
 
   const scene = new Scene();
   scene.background = new Color(0x9fd4f0);
+  scene.fog = new Fog(0x9fd4f0, 250, 700);
   scene.add(new HemisphereLight(0xdff3ff, 0x5a7d3a, 1.2));
   const sun = new DirectionalLight(0xffffff, 1.5);
   sun.position.set(40, 80, 30);
   scene.add(sun);
 
   const camera = new PerspectiveCamera(60, 1, 0.1, 1000);
-  camera.position.set(0, 20, 40);
+  camera.position.set(0, 110, 150);
   camera.lookAt(0, 0, 0);
 
   return { renderer, scene, camera };

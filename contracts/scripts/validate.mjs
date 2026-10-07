@@ -5,6 +5,7 @@ import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import Ajv2020 from "ajv/dist/2020.js";
 import addFormats from "ajv-formats";
+import { sampleHeight } from "./sample-height.mjs";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const readJson = (path) => JSON.parse(readFileSync(path, "utf8"));
@@ -44,23 +45,6 @@ for (const domain of ["signaling", "gameplay"]) {
       fail(`schemas/${domain}.schema.json`, `message ${def} has no example`);
     }
   }
-}
-
-// Reference terrain sampler. Clients and services must produce the same heights.
-export function sampleHeight(island, x, z) {
-  const { size, resolution, heights } = island;
-  const cell = size / (resolution - 1);
-  const clamp = (v) => Math.min(Math.max(v, 0), resolution - 1);
-  const fx = clamp((x + size / 2) / cell);
-  const fz = clamp((z + size / 2) / cell);
-  const c0 = Math.min(Math.floor(fx), resolution - 2);
-  const r0 = Math.min(Math.floor(fz), resolution - 2);
-  const tx = fx - c0;
-  const tz = fz - r0;
-  const h = (r, c) => heights[r * resolution + c];
-  const top = h(r0, c0) * (1 - tx) + h(r0, c0 + 1) * tx;
-  const bottom = h(r0 + 1, c0) * (1 - tx) + h(r0 + 1, c0 + 1) * tx;
-  return top * (1 - tz) + bottom * tz;
 }
 
 function checkWorld(where, world) {

@@ -6,14 +6,15 @@ Three.js game client, built with TypeScript and Vite.
 
 Run from `client/`. Needs Node 22 or later.
 
-| Task                          | Command                                        |
-| ----------------------------- | ---------------------------------------------- |
-| Install                       | `npm install`                                  |
-| Run locally                   | `npm run dev`, then open http://localhost:5173 |
-| Build (type check and bundle) | `npm run build`                                |
-| Test                          | `npm test`                                     |
-| Lint and check formatting     | `npm run lint`                                 |
-| Format                        | `npm run format`                               |
+| Task                          | Command                                                                |
+| ----------------------------- | ---------------------------------------------------------------------- |
+| Install                       | `npm install`                                                          |
+| Run locally                   | `npm run dev`, then open http://localhost:5173                         |
+| Build (type check and bundle) | `npm run build`                                                        |
+| Test                          | `npm test`                                                             |
+| Lint and check formatting     | `npm run lint`                                                         |
+| Format                        | `npm run format`                                                       |
+| Regenerate contract types     | `npm run contracts:types` (after any change in `../contracts/schemas`) |
 
 ## Modules
 
@@ -29,7 +30,9 @@ Each module talks to the others through interfaces, not through each other's int
 | `src/services`   | Adapters for backend services and their mocks     |
 | `src/shared`     | Shared types, configuration, utilities            |
 
-`src/main.ts` wires the modules together.
+`src/main.ts` wires the modules together. `src/shared/contracts/` holds types generated from
+`../contracts/schemas`; never edit them by hand. In local mode the world comes from
+`../contracts/examples/world/WorldConfig.json` (`src/shared/fixture-world.ts`).
 
 ## Modes
 

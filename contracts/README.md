@@ -28,7 +28,8 @@ Current version: see `VERSION`. History: `CHANGELOG.md`.
 | `openapi/` | OpenAPI 3.1 for the three REST services. Bodies reference `schemas/` |
 | `examples/<domain>/` | One valid example per definition, named `<Definition>[.<variant>].json` |
 | `docs/` | Flows and rules that schemas cannot express |
-| `scripts/validate.mjs` | Checks every example against its schema, checks world config invariants, and holds the reference terrain sampler |
+| `scripts/validate.mjs` | Checks every example against its schema and checks world and summary invariants |
+| `scripts/sample-height.mjs` | Reference terrain sampler. Import it in tests to check your own sampler |
 
 ## Using the contracts in a service
 

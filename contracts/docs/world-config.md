@@ -36,7 +36,7 @@ reproduce it. That is why the config carries an explicit heightmap rather than n
 | `waterLevel` | Y of the water surface. Ground at or below it is water |
 
 Everyone samples terrain height the same way, by bilinear interpolation with positions clamped to
-the map. The reference implementation is `sampleHeight` in `scripts/validate.mjs`:
+the map. The reference implementation is `sampleHeight` in `scripts/sample-height.mjs`:
 
 ```js
 const cell = size / (resolution - 1);
