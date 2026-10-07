@@ -2,6 +2,7 @@ import { createAvatar } from "./player/avatar";
 import { placeCamera } from "./player/follow-camera";
 import { PlayerInput } from "./player/input";
 import { LocalPlayer } from "./player/local-player";
+import { Targeting } from "./player/targeting";
 import { fixtureWorld } from "./shared/fixture-world";
 import { createIsland } from "./world/island";
 import { ResourceNodeLayer } from "./world/resource-nodes";
@@ -24,6 +25,13 @@ view.scene.add(structures.group);
 const avatar = createAvatar(slot);
 view.scene.add(avatar);
 
+const targeting = new Targeting(
+  fixtureWorld.resourceNodes,
+  resourceNodes,
+  fixtureWorld.rules.gathering.interactionRange,
+);
+view.scene.add(targeting.marker);
+
 const input = new PlayerInput(canvas);
 const player = new LocalPlayer(fixtureWorld.island, spawn, avatar);
 
@@ -44,6 +52,7 @@ window.addEventListener("resize", () => fitToWindow(view));
 startRenderLoop(view, (deltaSeconds) => {
   player.update(deltaSeconds, input);
   resourceNodes.update(deltaSeconds);
+  targeting.update(deltaSeconds, player.current().position);
   for (const task of frameTasks) task(deltaSeconds);
   placeCamera(view.camera, fixtureWorld.island, player.current().position, player.orbit);
 });
