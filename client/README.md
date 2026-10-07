@@ -42,6 +42,11 @@ Each module talks to the others through interfaces, not through each other's int
 | Mouse              | Orbit the camera                    |
 | WASD or arrow keys | Move relative to the camera         |
 
+## Demo scenario
+
+Until the game state store exists, `npm run dev` and open http://localhost:5173/?demo to drive the
+renderer with scripted gameplay (`src/dev/demo.ts`). The demo is never part of production builds.
+
 ## Modes
 
 The client runs in three modes: local single player with no backend, mock multiplayer with
