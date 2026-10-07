@@ -1,0 +1,15 @@
+{
+  "type": "PLAYER_JOINED",
+  "seq": 8,
+  "player": {
+    "playerId": "c42d8f10-7e6b-4a19-8d35-6f0b2e9a1c84",
+    "displayName": "Roku",
+    "slot": 2,
+    "position": {
+      "x": 0.0,
+      "y": 2.0,
+      "z": 24.0
+    },
+    "yaw": 0.0
+  }
+}

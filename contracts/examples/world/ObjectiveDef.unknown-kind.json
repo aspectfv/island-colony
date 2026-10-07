@@ -1,0 +1,7 @@
+{
+  "objectiveId": "deliver-supplies",
+  "kind": "DELIVER",
+  "description": "Deliver 10 Wood to the Storage Hut",
+  "target": { "wood": 10 },
+  "structureType": "storage-hut"
+}

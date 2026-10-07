@@ -1,0 +1,415 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/aspectfv/island-colony/contracts/schemas/world.schema.json",
+  "title": "World configuration",
+  "description": "Everything a client needs to build the initial island and everything the host needs to enforce the rules. Produced by the world service, passed through the lobby service unchanged. See docs/world-config.md.",
+  "$defs": {
+    "WorldConfig": {
+      "type": "object",
+      "required": [
+        "configVersion",
+        "seed",
+        "island",
+        "spawnPoints",
+        "buildZones",
+        "resourceNodes",
+        "rules"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "configVersion": {
+          "description": "Major version of this format. Bumped only on breaking changes.",
+          "const": 1
+        },
+        "seed": {
+          "$ref": "common.schema.json#/$defs/WorldSeed"
+        },
+        "island": {
+          "$ref": "#/$defs/Island"
+        },
+        "spawnPoints": {
+          "description": "One spawn point per lobby slot, indexed by slot.",
+          "type": "array",
+          "minItems": 5,
+          "items": {
+            "$ref": "#/$defs/SpawnPoint"
+          }
+        },
+        "buildZones": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/BuildZone"
+          }
+        },
+        "resourceNodes": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ResourceNode"
+          }
+        },
+        "rules": {
+          "$ref": "#/$defs/Rules"
+        }
+      }
+    },
+    "Island": {
+      "description": "Square heightmap centered on the origin. heights is row-major: index = row * resolution + col, where row walks +Z from -size/2 and col walks +X from -size/2.",
+      "type": "object",
+      "required": [
+        "size",
+        "resolution",
+        "waterLevel",
+        "heights"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "size": {
+          "description": "Edge length in meters.",
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "resolution": {
+          "description": "Samples per edge. Cell size is size / (resolution - 1).",
+          "type": "integer",
+          "minimum": 2,
+          "maximum": 513
+        },
+        "waterLevel": {
+          "description": "Y of the water surface. Ground at or below this is water.",
+          "type": "number"
+        },
+        "heights": {
+          "description": "resolution * resolution terrain heights in meters, rounded to 2 decimals.",
+          "type": "array",
+          "items": {
+            "type": "number"
+          }
+        }
+      }
+    },
+    "SpawnPoint": {
+      "type": "object",
+      "required": [
+        "position",
+        "yaw"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "position": {
+          "$ref": "common.schema.json#/$defs/Vec2"
+        },
+        "yaw": {
+          "$ref": "common.schema.json#/$defs/Yaw"
+        }
+      }
+    },
+    "BuildZone": {
+      "description": "Circle on land where structures may be placed. A structure's footprint must lie fully inside one zone.",
+      "type": "object",
+      "required": [
+        "zoneId",
+        "center",
+        "radius"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "zoneId": {
+          "$ref": "common.schema.json#/$defs/EntityId"
+        },
+        "center": {
+          "$ref": "common.schema.json#/$defs/Vec2"
+        },
+        "radius": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        }
+      }
+    },
+    "ResourceNode": {
+      "description": "A gatherable object. Charges and yield come from its node type in rules.nodeTypes.",
+      "type": "object",
+      "required": [
+        "resourceId",
+        "nodeType",
+        "position",
+        "yaw",
+        "scale"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "resourceId": {
+          "$ref": "common.schema.json#/$defs/EntityId"
+        },
+        "nodeType": {
+          "$ref": "common.schema.json#/$defs/ContentId"
+        },
+        "position": {
+          "$ref": "common.schema.json#/$defs/Vec3"
+        },
+        "yaw": {
+          "$ref": "common.schema.json#/$defs/Yaw"
+        },
+        "scale": {
+          "description": "Visual scale only. Does not change footprint or yield.",
+          "type": "number",
+          "exclusiveMinimum": 0
+        }
+      }
+    },
+    "Rules": {
+      "description": "Balancing and content catalogs. Adding content means adding entries here; no schema or protocol change.",
+      "type": "object",
+      "required": [
+        "resources",
+        "nodeTypes",
+        "structures",
+        "objectives",
+        "startingResources",
+        "gathering",
+        "building"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "resources": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/ResourceDef"
+          }
+        },
+        "nodeTypes": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/NodeTypeDef"
+          }
+        },
+        "structures": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/StructureDef"
+          }
+        },
+        "objectives": {
+          "description": "Completed strictly in order. The session completes when the last objective completes.",
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/ObjectiveDef"
+          }
+        },
+        "startingResources": {
+          "$ref": "common.schema.json#/$defs/ResourceAmounts"
+        },
+        "gathering": {
+          "type": "object",
+          "required": [
+            "interactionRange",
+            "cooldownMs"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "interactionRange": {
+              "description": "Max ground distance in meters from player to node center.",
+              "type": "number",
+              "exclusiveMinimum": 0
+            },
+            "cooldownMs": {
+              "description": "Min time between two accepted gathers by the same player.",
+              "type": "integer",
+              "minimum": 0
+            }
+          }
+        },
+        "building": {
+          "type": "object",
+          "required": [
+            "placementRange"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "placementRange": {
+              "description": "Max ground distance in meters from player to structure center.",
+              "type": "number",
+              "exclusiveMinimum": 0
+            }
+          }
+        }
+      }
+    },
+    "ResourceDef": {
+      "type": "object",
+      "required": [
+        "resourceType",
+        "displayName"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "resourceType": {
+          "$ref": "common.schema.json#/$defs/ContentId"
+        },
+        "displayName": {
+          "type": "string"
+        }
+      }
+    },
+    "NodeTypeDef": {
+      "type": "object",
+      "required": [
+        "nodeType",
+        "resourceType",
+        "charges",
+        "yieldPerGather",
+        "footprintRadius"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "nodeType": {
+          "$ref": "common.schema.json#/$defs/ContentId"
+        },
+        "resourceType": {
+          "$ref": "common.schema.json#/$defs/ContentId"
+        },
+        "charges": {
+          "description": "Accepted gathers before the node is depleted and removed.",
+          "type": "integer",
+          "minimum": 1
+        },
+        "yieldPerGather": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "footprintRadius": {
+          "description": "Blocks structure placement while the node is not depleted.",
+          "type": "number",
+          "minimum": 0
+        }
+      }
+    },
+    "StructureDef": {
+      "type": "object",
+      "required": [
+        "structureType",
+        "displayName",
+        "cost",
+        "footprintRadius"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "structureType": {
+          "$ref": "common.schema.json#/$defs/ContentId"
+        },
+        "displayName": {
+          "type": "string"
+        },
+        "cost": {
+          "$ref": "common.schema.json#/$defs/ResourceAmounts"
+        },
+        "footprintRadius": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        }
+      }
+    },
+    "ObjectiveDef": {
+      "description": "Discriminated by kind. Clients that do not recognize a kind still show description.",
+      "type": "object",
+      "required": [
+        "objectiveId",
+        "kind",
+        "description"
+      ],
+      "properties": {
+        "objectiveId": {
+          "$ref": "common.schema.json#/$defs/ContentId"
+        },
+        "kind": {
+          "type": "string",
+          "pattern": "^[A-Z][A-Z0-9_]*$"
+        },
+        "description": {
+          "description": "HUD text shown for this objective.",
+          "type": "string"
+        }
+      },
+      "oneOf": [
+        {
+          "$ref": "#/$defs/GatherObjective"
+        },
+        {
+          "$ref": "#/$defs/BuildObjective"
+        },
+        {
+          "$ref": "#/$defs/OtherObjective"
+        }
+      ]
+    },
+    "GatherObjective": {
+      "description": "Completes when shared totals reach target. Nothing is deducted.",
+      "type": "object",
+      "required": [
+        "kind",
+        "target"
+      ],
+      "properties": {
+        "objectiveId": true,
+        "description": true,
+        "kind": {
+          "const": "GATHER"
+        },
+        "target": {
+          "$ref": "common.schema.json#/$defs/ResourceAmounts"
+        }
+      },
+      "additionalProperties": false
+    },
+    "BuildObjective": {
+      "description": "Completes when one structure of structureType is placed. Only the current BUILD objective's structure may be placed.",
+      "type": "object",
+      "required": [
+        "kind",
+        "structureType"
+      ],
+      "properties": {
+        "objectiveId": true,
+        "description": true,
+        "kind": {
+          "const": "BUILD"
+        },
+        "structureType": {
+          "$ref": "common.schema.json#/$defs/ContentId"
+        }
+      },
+      "additionalProperties": false
+    },
+    "CreateWorldRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "seed": {
+          "description": "Omit to let the world service pick a random seed.",
+          "$ref": "common.schema.json#/$defs/WorldSeed"
+        }
+      }
+    },
+    "OtherObjective": {
+      "description": "Any kind this schema version does not define. Lets older consumers load configs with newer objective kinds; they show description. New kinds get their own branch and are added to the not-enum below.",
+      "type": "object",
+      "required": [
+        "kind"
+      ],
+      "properties": {
+        "kind": {
+          "not": {
+            "enum": [
+              "GATHER",
+              "BUILD"
+            ]
+          }
+        }
+      }
+    }
+  }
+}

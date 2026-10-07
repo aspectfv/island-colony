@@ -1,0 +1,10 @@
+{
+  "type": "PLACE_BUILDING",
+  "requestId": "r-31",
+  "structureType": "camp",
+  "position": {
+    "x": 2.5,
+    "z": -1.0
+  },
+  "yaw": 1.5708
+}

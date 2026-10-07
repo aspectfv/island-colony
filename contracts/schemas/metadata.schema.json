@@ -1,0 +1,231 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/aspectfv/island-colony/contracts/schemas/metadata.schema.json",
+  "title": "Session metadata service payloads",
+  "$defs": {
+    "Participant": {
+      "type": "object",
+      "required": [
+        "playerId",
+        "displayName",
+        "slot"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "playerId": {
+          "$ref": "common.schema.json#/$defs/PlayerId"
+        },
+        "displayName": {
+          "$ref": "common.schema.json#/$defs/DisplayName"
+        },
+        "slot": {
+          "$ref": "common.schema.json#/$defs/Slot"
+        }
+      }
+    },
+    "CreateSessionRecordRequest": {
+      "description": "Sent by the host right after the lobby service starts the session.",
+      "type": "object",
+      "required": [
+        "sessionId",
+        "lobbyCode",
+        "hostPlayerId",
+        "worldSeed",
+        "startedAt",
+        "participants"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "sessionId": {
+          "$ref": "common.schema.json#/$defs/SessionId"
+        },
+        "lobbyCode": {
+          "$ref": "common.schema.json#/$defs/LobbyCode"
+        },
+        "hostPlayerId": {
+          "$ref": "common.schema.json#/$defs/PlayerId"
+        },
+        "worldSeed": {
+          "$ref": "common.schema.json#/$defs/WorldSeed"
+        },
+        "startedAt": {
+          "$ref": "common.schema.json#/$defs/Timestamp"
+        },
+        "participants": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/Participant"
+          }
+        }
+      }
+    },
+    "Contribution": {
+      "type": "object",
+      "required": [
+        "playerId",
+        "gathered",
+        "structuresPlaced"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "playerId": {
+          "$ref": "common.schema.json#/$defs/PlayerId"
+        },
+        "gathered": {
+          "$ref": "common.schema.json#/$defs/ResourceAmounts"
+        },
+        "structuresPlaced": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "PlacedStructureSummary": {
+      "type": "object",
+      "required": [
+        "structureType",
+        "placedBy",
+        "placedAt"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "structureType": {
+          "$ref": "common.schema.json#/$defs/ContentId"
+        },
+        "placedBy": {
+          "$ref": "common.schema.json#/$defs/PlayerId"
+        },
+        "placedAt": {
+          "$ref": "common.schema.json#/$defs/Timestamp"
+        }
+      }
+    },
+    "SessionSummary": {
+      "description": "Built by the host from its authoritative state. Also carried by the SESSION_COMPLETED gameplay message.",
+      "type": "object",
+      "required": [
+        "outcome",
+        "endedAt",
+        "objectivesCompleted",
+        "structures",
+        "totalGathered",
+        "contributions"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "outcome": {
+          "description": "Open set. COMPLETED or HOST_ENDED in v1.",
+          "type": "string",
+          "pattern": "^[A-Z][A-Z0-9_]*$",
+          "examples": [
+            "COMPLETED",
+            "HOST_ENDED"
+          ]
+        },
+        "endedAt": {
+          "$ref": "common.schema.json#/$defs/Timestamp"
+        },
+        "objectivesCompleted": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "structures": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/PlacedStructureSummary"
+          }
+        },
+        "totalGathered": {
+          "$ref": "common.schema.json#/$defs/ResourceAmounts"
+        },
+        "contributions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Contribution"
+          }
+        }
+      }
+    },
+    "SessionRecordStatus": {
+      "type": "string",
+      "enum": [
+        "ACTIVE",
+        "COMPLETED",
+        "ENDED"
+      ]
+    },
+    "SessionRecord": {
+      "type": "object",
+      "required": [
+        "sessionId",
+        "lobbyCode",
+        "hostPlayerId",
+        "worldSeed",
+        "startedAt",
+        "participants",
+        "status",
+        "summary"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "sessionId": {
+          "$ref": "common.schema.json#/$defs/SessionId"
+        },
+        "lobbyCode": {
+          "$ref": "common.schema.json#/$defs/LobbyCode"
+        },
+        "hostPlayerId": {
+          "$ref": "common.schema.json#/$defs/PlayerId"
+        },
+        "worldSeed": {
+          "$ref": "common.schema.json#/$defs/WorldSeed"
+        },
+        "startedAt": {
+          "$ref": "common.schema.json#/$defs/Timestamp"
+        },
+        "participants": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Participant"
+          }
+        },
+        "status": {
+          "description": "ACTIVE until a summary is posted. COMPLETED when outcome is COMPLETED, ENDED otherwise.",
+          "$ref": "#/$defs/SessionRecordStatus"
+        },
+        "durationSeconds": {
+          "description": "Present once a summary is posted.",
+          "type": "integer",
+          "minimum": 0
+        },
+        "summary": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "$ref": "#/$defs/SessionSummary"
+            }
+          ]
+        }
+      }
+    },
+    "SessionRecordList": {
+      "type": "object",
+      "required": [
+        "items"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "items": {
+          "description": "Newest startedAt first.",
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/SessionRecord"
+          }
+        }
+      }
+    }
+  }
+}

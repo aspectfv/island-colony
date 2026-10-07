@@ -1,0 +1,6 @@
+{
+  "type": "ACTION_REJECTED",
+  "requestId": "r-18",
+  "code": "RESOURCE_DEPLETED",
+  "message": "tree-0001 has no charges left."
+}

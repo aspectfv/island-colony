@@ -1,0 +1,12 @@
+{
+  "type": "about:blank",
+  "status": 400,
+  "title": "Request validation failed",
+  "code": "VALIDATION_FAILED",
+  "errors": [
+    {
+      "field": "/displayName",
+      "message": "must be 1 to 16 characters"
+    }
+  ]
+}

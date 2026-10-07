@@ -1,0 +1,179 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/aspectfv/island-colony/contracts/schemas/signaling.schema.json",
+  "title": "Signaling WebSocket messages",
+  "description": "JSON text frames on ws://<signaling-host>/ws. Every message has a type. Clients send to; the server rewrites it to from before forwarding. See docs/signaling-protocol.md.",
+  "$defs": {
+    "ClientMessage": {
+      "oneOf": [
+        { "$ref": "#/$defs/Join" },
+        { "$ref": "#/$defs/OfferOut" },
+        { "$ref": "#/$defs/AnswerOut" },
+        { "$ref": "#/$defs/IceCandidateOut" },
+        { "$ref": "#/$defs/Leave" }
+      ]
+    },
+    "ServerMessage": {
+      "oneOf": [
+        { "$ref": "#/$defs/Joined" },
+        { "$ref": "#/$defs/PeerJoined" },
+        { "$ref": "#/$defs/PeerLeft" },
+        { "$ref": "#/$defs/OfferIn" },
+        { "$ref": "#/$defs/AnswerIn" },
+        { "$ref": "#/$defs/IceCandidateIn" },
+        { "$ref": "#/$defs/Error" }
+      ]
+    },
+    "SessionDescription": {
+      "type": "object",
+      "required": ["type", "sdp"],
+      "additionalProperties": false,
+      "properties": {
+        "type": { "enum": ["offer", "answer"] },
+        "sdp": { "type": "string" }
+      }
+    },
+    "IceCandidate": {
+      "description": "RTCIceCandidateInit as produced by candidate.toJSON(). Null signals end of candidates.",
+      "oneOf": [
+        { "type": "null" },
+        {
+          "type": "object",
+          "required": ["candidate"],
+          "additionalProperties": false,
+          "properties": {
+            "candidate": { "type": "string" },
+            "sdpMid": { "type": ["string", "null"] },
+            "sdpMLineIndex": { "type": ["integer", "null"], "minimum": 0 },
+            "usernameFragment": { "type": ["string", "null"] }
+          }
+        }
+      ]
+    },
+    "Join": {
+      "type": "object",
+      "required": ["type", "lobbyCode", "playerId"],
+      "additionalProperties": false,
+      "properties": {
+        "type": { "const": "JOIN" },
+        "lobbyCode": { "$ref": "common.schema.json#/$defs/LobbyCode" },
+        "playerId": { "$ref": "common.schema.json#/$defs/PlayerId" }
+      }
+    },
+    "Leave": {
+      "type": "object",
+      "required": ["type"],
+      "additionalProperties": false,
+      "properties": {
+        "type": { "const": "LEAVE" }
+      }
+    },
+    "OfferOut": {
+      "type": "object",
+      "required": ["type", "to", "description"],
+      "additionalProperties": false,
+      "properties": {
+        "type": { "const": "OFFER" },
+        "to": { "$ref": "common.schema.json#/$defs/PlayerId" },
+        "description": { "$ref": "#/$defs/SessionDescription" }
+      }
+    },
+    "AnswerOut": {
+      "type": "object",
+      "required": ["type", "to", "description"],
+      "additionalProperties": false,
+      "properties": {
+        "type": { "const": "ANSWER" },
+        "to": { "$ref": "common.schema.json#/$defs/PlayerId" },
+        "description": { "$ref": "#/$defs/SessionDescription" }
+      }
+    },
+    "IceCandidateOut": {
+      "type": "object",
+      "required": ["type", "to", "candidate"],
+      "additionalProperties": false,
+      "properties": {
+        "type": { "const": "ICE_CANDIDATE" },
+        "to": { "$ref": "common.schema.json#/$defs/PlayerId" },
+        "candidate": { "$ref": "#/$defs/IceCandidate" }
+      }
+    },
+    "Joined": {
+      "type": "object",
+      "required": ["type", "lobbyCode", "playerId", "peers"],
+      "additionalProperties": false,
+      "properties": {
+        "type": { "const": "JOINED" },
+        "lobbyCode": { "$ref": "common.schema.json#/$defs/LobbyCode" },
+        "playerId": { "$ref": "common.schema.json#/$defs/PlayerId" },
+        "peers": {
+          "description": "Other players already in the room.",
+          "type": "array",
+          "items": { "$ref": "common.schema.json#/$defs/PlayerId" }
+        }
+      }
+    },
+    "PeerJoined": {
+      "type": "object",
+      "required": ["type", "playerId"],
+      "additionalProperties": false,
+      "properties": {
+        "type": { "const": "PEER_JOINED" },
+        "playerId": { "$ref": "common.schema.json#/$defs/PlayerId" }
+      }
+    },
+    "PeerLeft": {
+      "type": "object",
+      "required": ["type", "playerId"],
+      "additionalProperties": false,
+      "properties": {
+        "type": { "const": "PEER_LEFT" },
+        "playerId": { "$ref": "common.schema.json#/$defs/PlayerId" }
+      }
+    },
+    "OfferIn": {
+      "type": "object",
+      "required": ["type", "from", "description"],
+      "additionalProperties": false,
+      "properties": {
+        "type": { "const": "OFFER" },
+        "from": { "$ref": "common.schema.json#/$defs/PlayerId" },
+        "description": { "$ref": "#/$defs/SessionDescription" }
+      }
+    },
+    "AnswerIn": {
+      "type": "object",
+      "required": ["type", "from", "description"],
+      "additionalProperties": false,
+      "properties": {
+        "type": { "const": "ANSWER" },
+        "from": { "$ref": "common.schema.json#/$defs/PlayerId" },
+        "description": { "$ref": "#/$defs/SessionDescription" }
+      }
+    },
+    "IceCandidateIn": {
+      "type": "object",
+      "required": ["type", "from", "candidate"],
+      "additionalProperties": false,
+      "properties": {
+        "type": { "const": "ICE_CANDIDATE" },
+        "from": { "$ref": "common.schema.json#/$defs/PlayerId" },
+        "candidate": { "$ref": "#/$defs/IceCandidate" }
+      }
+    },
+    "Error": {
+      "type": "object",
+      "required": ["type", "code", "message"],
+      "additionalProperties": false,
+      "properties": {
+        "type": { "const": "ERROR" },
+        "code": {
+          "description": "Open set. Known codes are listed in docs/signaling-protocol.md.",
+          "type": "string",
+          "pattern": "^[A-Z][A-Z0-9_]*$"
+        },
+        "message": { "type": "string" }
+      }
+    }
+  }
+}

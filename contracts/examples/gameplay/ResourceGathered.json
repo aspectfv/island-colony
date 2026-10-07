@@ -1,0 +1,14 @@
+{
+  "type": "RESOURCE_GATHERED",
+  "seq": 9,
+  "requestId": "r-17",
+  "playerId": "9b1e7d42-5c3a-4f8e-b6d0-2a4c8e1f3b57",
+  "resourceId": "tree-0001",
+  "resourceType": "wood",
+  "amount": 5,
+  "remainingCharges": 0,
+  "resources": {
+    "wood": 15,
+    "stone": 3
+  }
+}
