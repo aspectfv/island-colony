@@ -34,6 +34,14 @@ Each module talks to the others through interfaces, not through each other's int
 `../contracts/schemas`; never edit them by hand. In local mode the world comes from
 `../contracts/examples/world/WorldConfig.json` (`src/shared/fixture-world.ts`).
 
+## Controls
+
+| Input              | Action                              |
+| ------------------ | ----------------------------------- |
+| Click the game     | Capture the mouse (Esc releases it) |
+| Mouse              | Orbit the camera                    |
+| WASD or arrow keys | Move relative to the camera         |
+
 ## Modes
 
 The client runs in three modes: local single player with no backend, mock multiplayer with

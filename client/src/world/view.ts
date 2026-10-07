@@ -5,6 +5,7 @@ import {
   HemisphereLight,
   PerspectiveCamera,
   Scene,
+  Timer,
   WebGLRenderer,
 } from "three";
 
@@ -43,6 +44,14 @@ export function fitToWindow(view: WorldView): void {
   resizeCamera(view.camera, window.innerWidth, window.innerHeight);
 }
 
-export function startRenderLoop(view: WorldView): void {
-  view.renderer.setAnimationLoop(() => view.renderer.render(view.scene, view.camera));
+// Longest frame step we simulate, so a backgrounded tab does not teleport the player on return.
+const MAX_FRAME_SECONDS = 0.1;
+
+export function startRenderLoop(view: WorldView, onFrame: (deltaSeconds: number) => void): void {
+  const timer = new Timer();
+  view.renderer.setAnimationLoop((timestamp) => {
+    timer.update(timestamp);
+    onFrame(Math.min(timer.getDelta(), MAX_FRAME_SECONDS));
+    view.renderer.render(view.scene, view.camera);
+  });
 }
