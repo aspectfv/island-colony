@@ -72,6 +72,11 @@ export class RemoteAvatars {
     this.players.delete(playerId);
   }
 
+  // A new session starts with nobody else in it until PLAYER_JOINED or a snapshot says otherwise.
+  clear(): void {
+    for (const playerId of [...this.players.keys()]) this.remove(playerId);
+  }
+
   // The movement channel is unordered: anything not newer than the last message is dropped.
   receive(message: PlayerMoved, receivedAt: number): void {
     const player = this.players.get(message.playerId);

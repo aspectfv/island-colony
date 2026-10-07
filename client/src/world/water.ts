@@ -2,6 +2,7 @@ import { Group, Mesh, MeshLambertMaterial, PlaneGeometry } from "three";
 import type { Island } from "../shared/contracts/world";
 
 const SEABED_COLOR = 0xc9b27a;
+const SEABED_DEPTH = 3;
 
 export function createWater(island: Island): Group {
   // Both planes extend well past the map so the horizon is all sea and the map edge never shows.
@@ -13,13 +14,14 @@ export function createWater(island: Island): Group {
   surface.rotation.x = -Math.PI / 2;
   surface.position.y = island.waterLevel;
 
-  // Seabed under and around the island at its deepest point.
+  // Seabed under and around the island at its deepest point, and always below the water even
+  // when no terrain is underwater.
   const seabed = new Mesh(
     new PlaneGeometry(extent, extent),
     new MeshLambertMaterial({ color: SEABED_COLOR }),
   );
   seabed.rotation.x = -Math.PI / 2;
-  seabed.position.y = Math.min(...island.heights) - 0.01;
+  seabed.position.y = Math.min(...island.heights, island.waterLevel - SEABED_DEPTH) - 0.01;
 
   const water = new Group();
   water.name = "water";
