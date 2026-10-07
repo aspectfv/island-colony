@@ -4,13 +4,19 @@ import globals from "globals";
 import tseslint from "typescript-eslint";
 
 export default tseslint.config(
-  { ignores: ["dist"] },
+  { ignores: ["dist", "src/shared/contracts"] },
   js.configs.recommended,
   tseslint.configs.recommended,
   prettier,
   {
     languageOptions: {
       globals: globals.browser,
+    },
+  },
+  {
+    files: ["scripts/**", "*.config.*"],
+    languageOptions: {
+      globals: globals.node,
     },
   },
 );
