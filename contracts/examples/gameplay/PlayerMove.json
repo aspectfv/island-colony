@@ -1,0 +1,11 @@
+{
+  "type": "PLAYER_MOVE",
+  "n": 1520,
+  "position": {
+    "x": 4.21,
+    "y": 2.03,
+    "z": 9.87
+  },
+  "yaw": -0.42,
+  "animation": "walk"
+}

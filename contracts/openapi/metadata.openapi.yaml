@@ -1,0 +1,149 @@
+openapi: 3.1.0
+info:
+  title: Island Colony session metadata service
+  version: 1.0.0
+  description: |
+    Session participants and completion records. Written by the host client, read by any client.
+    Schemas: ../schemas/metadata.schema.json. Rules: ../docs/metadata-service.md.
+servers:
+  - url: http://localhost:8084
+    description: Local development
+security: []
+tags:
+  - name: sessions
+    description: Session participants and summaries.
+  - name: health
+    description: Liveness check.
+paths:
+  /health:
+    get:
+      tags: [health]
+      operationId: getHealth
+      summary: Liveness check.
+      responses:
+        '200':
+          description: Service is up.
+          content:
+            application/json:
+              schema:
+                $ref: ../schemas/common.schema.json#/$defs/Health
+  /api/v1/sessions:
+    post:
+      tags: [sessions]
+      operationId: createSessionRecord
+      summary: Record a started session and its participants.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: ../schemas/metadata.schema.json#/$defs/CreateSessionRecordRequest
+      responses:
+        '201':
+          description: Recorded with status ACTIVE.
+          content:
+            application/json:
+              schema:
+                $ref: ../schemas/metadata.schema.json#/$defs/SessionRecord
+        '400':
+          $ref: '#/components/responses/ValidationFailed'
+        '409':
+          description: SESSION_EXISTS.
+          content:
+            application/problem+json:
+              schema:
+                $ref: ../schemas/common.schema.json#/$defs/Problem
+    get:
+      tags: [sessions]
+      operationId: listSessionRecords
+      summary: Recent sessions, newest first.
+      parameters:
+        - name: status
+          in: query
+          required: false
+          schema:
+            $ref: ../schemas/metadata.schema.json#/$defs/SessionRecordStatus
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+      responses:
+        '200':
+          description: Session records.
+          content:
+            application/json:
+              schema:
+                $ref: ../schemas/metadata.schema.json#/$defs/SessionRecordList
+        '400':
+          $ref: '#/components/responses/ValidationFailed'
+  /api/v1/sessions/{sessionId}:
+    parameters:
+      - $ref: '#/components/parameters/SessionId'
+    get:
+      tags: [sessions]
+      operationId: getSessionRecord
+      summary: Read one session record.
+      responses:
+        '200':
+          description: Session record.
+          content:
+            application/json:
+              schema:
+                $ref: ../schemas/metadata.schema.json#/$defs/SessionRecord
+        '404':
+          $ref: '#/components/responses/SessionNotFound'
+  /api/v1/sessions/{sessionId}/summary:
+    parameters:
+      - $ref: '#/components/parameters/SessionId'
+    post:
+      tags: [sessions]
+      operationId: postSessionSummary
+      summary: Record how the session ended. Accepted once per session.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: ../schemas/metadata.schema.json#/$defs/SessionSummary
+      responses:
+        '200':
+          description: Updated record with status COMPLETED or ENDED.
+          content:
+            application/json:
+              schema:
+                $ref: ../schemas/metadata.schema.json#/$defs/SessionRecord
+        '400':
+          $ref: '#/components/responses/ValidationFailed'
+        '404':
+          $ref: '#/components/responses/SessionNotFound'
+        '409':
+          description: SUMMARY_EXISTS.
+          content:
+            application/problem+json:
+              schema:
+                $ref: ../schemas/common.schema.json#/$defs/Problem
+components:
+  parameters:
+    SessionId:
+      name: sessionId
+      in: path
+      required: true
+      schema:
+        $ref: ../schemas/common.schema.json#/$defs/SessionId
+  responses:
+    ValidationFailed:
+      description: VALIDATION_FAILED.
+      content:
+        application/problem+json:
+          schema:
+            $ref: ../schemas/common.schema.json#/$defs/Problem
+    SessionNotFound:
+      description: SESSION_NOT_FOUND.
+      content:
+        application/problem+json:
+          schema:
+            $ref: ../schemas/common.schema.json#/$defs/Problem

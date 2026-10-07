@@ -1,0 +1,8 @@
+{
+  "type": "OFFER",
+  "from": "3f6c2a1e-8b4d-4c2e-9a71-0d5e2b7c4f10",
+  "description": {
+    "type": "offer",
+    "sdp": "v=0\r\no=- 4611731400430051336 2 IN IP4 127.0.0.1\r\ns=-\r\nt=0 0\r\na=group:BUNDLE 0\r\nm=application 9 UDP/DTLS/SCTP webrtc-datachannel\r\nc=IN IP4 0.0.0.0\r\na=mid:0\r\na=sctp-port:5000\r\n"
+  }
+}

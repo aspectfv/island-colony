@@ -1,0 +1,240 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/aspectfv/island-colony/contracts/schemas/lobby.schema.json",
+  "title": "Lobby service payloads",
+  "$defs": {
+    "CreateLobbyRequest": {
+      "type": "object",
+      "required": [
+        "displayName"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "displayName": {
+          "$ref": "common.schema.json#/$defs/DisplayName"
+        }
+      }
+    },
+    "JoinLobbyRequest": {
+      "type": "object",
+      "required": [
+        "displayName"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "displayName": {
+          "$ref": "common.schema.json#/$defs/DisplayName"
+        }
+      }
+    },
+    "LobbyMembership": {
+      "description": "Returned once on create or join. The client keeps playerToken for later calls.",
+      "type": "object",
+      "required": [
+        "lobby",
+        "playerId",
+        "playerToken"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "lobby": {
+          "$ref": "#/$defs/Lobby"
+        },
+        "playerId": {
+          "$ref": "common.schema.json#/$defs/PlayerId"
+        },
+        "playerToken": {
+          "$ref": "common.schema.json#/$defs/PlayerToken"
+        }
+      }
+    },
+    "LobbyStatus": {
+      "type": "string",
+      "enum": [
+        "WAITING",
+        "IN_PROGRESS",
+        "ENDED"
+      ]
+    },
+    "EndReason": {
+      "description": "Open set. Clients show a generic message for unknown values.",
+      "type": "string",
+      "pattern": "^[A-Z][A-Z0-9_]*$",
+      "examples": [
+        "COMPLETED",
+        "HOST_ENDED",
+        "HOST_LEFT",
+        "HOST_DISCONNECTED"
+      ]
+    },
+    "Lobby": {
+      "type": "object",
+      "required": [
+        "lobbyCode",
+        "status",
+        "hostPlayerId",
+        "maxPlayers",
+        "players",
+        "session",
+        "createdAt"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "lobbyCode": {
+          "$ref": "common.schema.json#/$defs/LobbyCode"
+        },
+        "status": {
+          "$ref": "#/$defs/LobbyStatus"
+        },
+        "hostPlayerId": {
+          "$ref": "common.schema.json#/$defs/PlayerId"
+        },
+        "maxPlayers": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "players": {
+          "description": "Ordered by slot.",
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/LobbyPlayer"
+          }
+        },
+        "session": {
+          "description": "Null until the host starts the session.",
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "$ref": "#/$defs/SessionInfo"
+            }
+          ]
+        },
+        "endReason": {
+          "description": "Present only when status is ENDED.",
+          "$ref": "#/$defs/EndReason"
+        },
+        "createdAt": {
+          "$ref": "common.schema.json#/$defs/Timestamp"
+        }
+      }
+    },
+    "LobbyPlayer": {
+      "type": "object",
+      "required": [
+        "playerId",
+        "displayName",
+        "slot",
+        "joinedAt"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "playerId": {
+          "$ref": "common.schema.json#/$defs/PlayerId"
+        },
+        "displayName": {
+          "$ref": "common.schema.json#/$defs/DisplayName"
+        },
+        "slot": {
+          "$ref": "common.schema.json#/$defs/Slot"
+        },
+        "joinedAt": {
+          "$ref": "common.schema.json#/$defs/Timestamp"
+        }
+      }
+    },
+    "SessionInfo": {
+      "description": "Light session summary embedded in Lobby so polling stays small.",
+      "type": "object",
+      "required": [
+        "sessionId",
+        "worldSeed",
+        "startedAt"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "sessionId": {
+          "$ref": "common.schema.json#/$defs/SessionId"
+        },
+        "worldSeed": {
+          "$ref": "common.schema.json#/$defs/WorldSeed"
+        },
+        "startedAt": {
+          "$ref": "common.schema.json#/$defs/Timestamp"
+        }
+      }
+    },
+    "SessionDetails": {
+      "description": "Full session including the world config. Returned by start and by GET session.",
+      "type": "object",
+      "required": [
+        "sessionId",
+        "lobbyCode",
+        "hostPlayerId",
+        "players",
+        "startedAt",
+        "worldConfig"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "sessionId": {
+          "$ref": "common.schema.json#/$defs/SessionId"
+        },
+        "lobbyCode": {
+          "$ref": "common.schema.json#/$defs/LobbyCode"
+        },
+        "hostPlayerId": {
+          "$ref": "common.schema.json#/$defs/PlayerId"
+        },
+        "players": {
+          "description": "Lobby members at the moment the session started. Ordered by slot.",
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/LobbyPlayer"
+          }
+        },
+        "startedAt": {
+          "$ref": "common.schema.json#/$defs/Timestamp"
+        },
+        "worldConfig": {
+          "$ref": "world.schema.json#/$defs/WorldConfig"
+        }
+      }
+    },
+    "EndSessionRequest": {
+      "type": "object",
+      "required": [
+        "reason"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "reason": {
+          "type": "string",
+          "enum": [
+            "COMPLETED",
+            "HOST_ENDED"
+          ]
+        }
+      }
+    },
+    "StartSessionRequest": {
+      "description": "The members the host sees with open game channels. The lobby service starts only if this matches its member list exactly.",
+      "type": "object",
+      "required": [
+        "expectedPlayerIds"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "expectedPlayerIds": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "common.schema.json#/$defs/PlayerId"
+          }
+        }
+      }
+    }
+  }
+}

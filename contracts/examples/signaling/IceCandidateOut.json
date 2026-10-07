@@ -1,0 +1,10 @@
+{
+  "type": "ICE_CANDIDATE",
+  "to": "3f6c2a1e-8b4d-4c2e-9a71-0d5e2b7c4f10",
+  "candidate": {
+    "candidate": "candidate:842163049 1 udp 1677729535 192.168.1.20 52344 typ srflx raddr 0.0.0.0 rport 0 generation 0",
+    "sdpMid": "0",
+    "sdpMLineIndex": 0,
+    "usernameFragment": "a1b2"
+  }
+}

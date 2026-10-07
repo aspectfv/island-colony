@@ -1,0 +1,618 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/aspectfv/island-colony/contracts/schemas/gameplay.schema.json",
+  "title": "Gameplay messages over WebRTC DataChannels",
+  "description": "JSON text messages between host and peers. Star topology: every peer talks only to the host. See docs/gameplay-protocol.md.",
+  "$defs": {
+    "ProtocolVersion": {
+      "description": "Major version of the gameplay protocol. Bumped only on breaking changes.",
+      "const": 1
+    },
+    "Seq": {
+      "description": "Host event sequence number. Starts at 1 per session and increases by 1 for every state-changing event.",
+      "type": "integer",
+      "minimum": 1
+    },
+    "RequestId": {
+      "description": "Chosen by the requester, unique per requester for the session. Echoed in the result or rejection.",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64
+    },
+    "PeerToHostGameMessage": {
+      "description": "Sent on the game channel by a peer. The host's own client produces the same messages locally.",
+      "oneOf": [
+        {
+          "$ref": "#/$defs/ClientReady"
+        },
+        {
+          "$ref": "#/$defs/GatherResource"
+        },
+        {
+          "$ref": "#/$defs/PlaceBuilding"
+        }
+      ]
+    },
+    "HostToPeerGameMessage": {
+      "description": "Sent on the game channel by the host.",
+      "oneOf": [
+        {
+          "$ref": "#/$defs/SessionStarted"
+        },
+        {
+          "$ref": "#/$defs/StateSnapshot"
+        },
+        {
+          "$ref": "#/$defs/PlayerJoined"
+        },
+        {
+          "$ref": "#/$defs/PlayerLeft"
+        },
+        {
+          "$ref": "#/$defs/ResourceGathered"
+        },
+        {
+          "$ref": "#/$defs/BuildingPlaced"
+        },
+        {
+          "$ref": "#/$defs/ObjectiveUpdated"
+        },
+        {
+          "$ref": "#/$defs/SessionCompleted"
+        },
+        {
+          "$ref": "#/$defs/SessionEnded"
+        },
+        {
+          "$ref": "#/$defs/ActionRejected"
+        }
+      ]
+    },
+    "MovementMessage": {
+      "description": "Sent on the movement channel (unordered, no retransmits).",
+      "oneOf": [
+        {
+          "$ref": "#/$defs/PlayerMove"
+        },
+        {
+          "$ref": "#/$defs/PlayerMoved"
+        }
+      ]
+    },
+    "SessionStatus": {
+      "type": "string",
+      "enum": [
+        "ACTIVE",
+        "COMPLETED",
+        "ENDED"
+      ]
+    },
+    "GamePlayer": {
+      "type": "object",
+      "required": [
+        "playerId",
+        "displayName",
+        "slot",
+        "position",
+        "yaw"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "playerId": {
+          "$ref": "common.schema.json#/$defs/PlayerId"
+        },
+        "displayName": {
+          "$ref": "common.schema.json#/$defs/DisplayName"
+        },
+        "slot": {
+          "$ref": "common.schema.json#/$defs/Slot"
+        },
+        "position": {
+          "$ref": "common.schema.json#/$defs/Vec3"
+        },
+        "yaw": {
+          "$ref": "common.schema.json#/$defs/Yaw"
+        }
+      }
+    },
+    "PlacedStructure": {
+      "type": "object",
+      "required": [
+        "structureId",
+        "structureType",
+        "position",
+        "yaw",
+        "placedBy"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "structureId": {
+          "$ref": "common.schema.json#/$defs/EntityId"
+        },
+        "structureType": {
+          "$ref": "common.schema.json#/$defs/ContentId"
+        },
+        "position": {
+          "description": "Ground position. Clients sample terrain height for Y.",
+          "$ref": "common.schema.json#/$defs/Vec2"
+        },
+        "yaw": {
+          "$ref": "common.schema.json#/$defs/Yaw"
+        },
+        "placedBy": {
+          "$ref": "common.schema.json#/$defs/PlayerId"
+        }
+      }
+    },
+    "GameState": {
+      "description": "Full authoritative state. Static world data stays in the world config; this holds only what changes.",
+      "type": "object",
+      "required": [
+        "sessionId",
+        "status",
+        "players",
+        "resources",
+        "nodeCharges",
+        "structures",
+        "objectiveIndex"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "sessionId": {
+          "$ref": "common.schema.json#/$defs/SessionId"
+        },
+        "status": {
+          "$ref": "#/$defs/SessionStatus"
+        },
+        "players": {
+          "description": "The host from session start, plus every peer that has sent CLIENT_READY.",
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/GamePlayer"
+          }
+        },
+        "resources": {
+          "$ref": "common.schema.json#/$defs/ResourceAmounts"
+        },
+        "nodeCharges": {
+          "description": "Remaining charges for nodes that have been gathered at least once. 0 means depleted. Nodes not listed have full charges.",
+          "type": "object",
+          "propertyNames": {
+            "$ref": "common.schema.json#/$defs/EntityId"
+          },
+          "additionalProperties": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "structures": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/PlacedStructure"
+          }
+        },
+        "objectiveIndex": {
+          "description": "Index into rules.objectives of the current objective. Equals rules.objectives.length once all are complete.",
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "ClientReady": {
+      "description": "Peer has loaded the world and is ready for the snapshot.",
+      "type": "object",
+      "required": [
+        "type",
+        "protocolVersion"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "const": "CLIENT_READY"
+        },
+        "protocolVersion": {
+          "$ref": "#/$defs/ProtocolVersion"
+        }
+      }
+    },
+    "GatherResource": {
+      "type": "object",
+      "required": [
+        "type",
+        "requestId",
+        "resourceId"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "const": "GATHER_RESOURCE"
+        },
+        "requestId": {
+          "$ref": "#/$defs/RequestId"
+        },
+        "resourceId": {
+          "$ref": "common.schema.json#/$defs/EntityId"
+        }
+      }
+    },
+    "PlaceBuilding": {
+      "type": "object",
+      "required": [
+        "type",
+        "requestId",
+        "structureType",
+        "position",
+        "yaw"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "const": "PLACE_BUILDING"
+        },
+        "requestId": {
+          "$ref": "#/$defs/RequestId"
+        },
+        "structureType": {
+          "$ref": "common.schema.json#/$defs/ContentId"
+        },
+        "position": {
+          "$ref": "common.schema.json#/$defs/Vec2"
+        },
+        "yaw": {
+          "$ref": "common.schema.json#/$defs/Yaw"
+        }
+      }
+    },
+    "SessionStarted": {
+      "description": "Broadcast once by the host after the lobby service starts the session. Peers then fetch the world config from the lobby service.",
+      "type": "object",
+      "required": [
+        "type",
+        "sessionId",
+        "lobbyCode",
+        "protocolVersion"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "const": "SESSION_STARTED"
+        },
+        "sessionId": {
+          "$ref": "common.schema.json#/$defs/SessionId"
+        },
+        "lobbyCode": {
+          "$ref": "common.schema.json#/$defs/LobbyCode"
+        },
+        "protocolVersion": {
+          "$ref": "#/$defs/ProtocolVersion"
+        }
+      }
+    },
+    "StateSnapshot": {
+      "description": "Sent to one peer in reply to CLIENT_READY. seq is the last event already applied in state.",
+      "type": "object",
+      "required": [
+        "type",
+        "seq",
+        "state"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "const": "STATE_SNAPSHOT"
+        },
+        "seq": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "state": {
+          "$ref": "#/$defs/GameState"
+        }
+      }
+    },
+    "PlayerJoined": {
+      "description": "A player finished loading and entered the world.",
+      "type": "object",
+      "required": [
+        "type",
+        "seq",
+        "player"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "const": "PLAYER_JOINED"
+        },
+        "seq": {
+          "$ref": "#/$defs/Seq"
+        },
+        "player": {
+          "$ref": "#/$defs/GamePlayer"
+        }
+      }
+    },
+    "PlayerLeft": {
+      "type": "object",
+      "required": [
+        "type",
+        "seq",
+        "playerId",
+        "reason"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "const": "PLAYER_LEFT"
+        },
+        "seq": {
+          "$ref": "#/$defs/Seq"
+        },
+        "playerId": {
+          "$ref": "common.schema.json#/$defs/PlayerId"
+        },
+        "reason": {
+          "description": "Open set.",
+          "type": "string",
+          "pattern": "^[A-Z][A-Z0-9_]*$",
+          "examples": [
+            "DISCONNECTED",
+            "LEFT"
+          ]
+        }
+      }
+    },
+    "ResourceGathered": {
+      "type": "object",
+      "required": [
+        "type",
+        "seq",
+        "requestId",
+        "playerId",
+        "resourceId",
+        "resourceType",
+        "amount",
+        "remainingCharges",
+        "resources"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "const": "RESOURCE_GATHERED"
+        },
+        "seq": {
+          "$ref": "#/$defs/Seq"
+        },
+        "requestId": {
+          "$ref": "#/$defs/RequestId"
+        },
+        "playerId": {
+          "$ref": "common.schema.json#/$defs/PlayerId"
+        },
+        "resourceId": {
+          "$ref": "common.schema.json#/$defs/EntityId"
+        },
+        "resourceType": {
+          "$ref": "common.schema.json#/$defs/ContentId"
+        },
+        "amount": {
+          "description": "Amount added to the shared total by this gather.",
+          "type": "integer",
+          "minimum": 1
+        },
+        "remainingCharges": {
+          "description": "0 means the node is depleted and must be removed.",
+          "type": "integer",
+          "minimum": 0
+        },
+        "resources": {
+          "description": "Shared totals after this gather.",
+          "$ref": "common.schema.json#/$defs/ResourceAmounts"
+        }
+      }
+    },
+    "BuildingPlaced": {
+      "type": "object",
+      "required": [
+        "type",
+        "seq",
+        "requestId",
+        "structure",
+        "resources"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "const": "BUILDING_PLACED"
+        },
+        "seq": {
+          "$ref": "#/$defs/Seq"
+        },
+        "requestId": {
+          "$ref": "#/$defs/RequestId"
+        },
+        "structure": {
+          "$ref": "#/$defs/PlacedStructure"
+        },
+        "resources": {
+          "description": "Shared totals after the cost was deducted.",
+          "$ref": "common.schema.json#/$defs/ResourceAmounts"
+        }
+      }
+    },
+    "ObjectiveUpdated": {
+      "type": "object",
+      "required": [
+        "type",
+        "seq",
+        "completedObjectiveId",
+        "objectiveIndex"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "const": "OBJECTIVE_UPDATED"
+        },
+        "seq": {
+          "$ref": "#/$defs/Seq"
+        },
+        "completedObjectiveId": {
+          "$ref": "common.schema.json#/$defs/ContentId"
+        },
+        "objectiveIndex": {
+          "description": "New current objective index. Equals rules.objectives.length when the last one completed.",
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "SessionCompleted": {
+      "description": "Sent right after the OBJECTIVE_UPDATED that completes the last objective.",
+      "type": "object",
+      "required": [
+        "type",
+        "seq",
+        "summary"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "const": "SESSION_COMPLETED"
+        },
+        "seq": {
+          "$ref": "#/$defs/Seq"
+        },
+        "summary": {
+          "$ref": "metadata.schema.json#/$defs/SessionSummary"
+        }
+      }
+    },
+    "SessionEnded": {
+      "description": "The host ended the session early. Not sent on host disconnect; peers detect that from the channel closing.",
+      "type": "object",
+      "required": [
+        "type",
+        "seq",
+        "reason",
+        "summary"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "const": "SESSION_ENDED"
+        },
+        "seq": {
+          "$ref": "#/$defs/Seq"
+        },
+        "reason": {
+          "const": "HOST_ENDED"
+        },
+        "summary": {
+          "$ref": "metadata.schema.json#/$defs/SessionSummary"
+        }
+      }
+    },
+    "ActionRejected": {
+      "description": "Sent only to the requester. No seq because state did not change.",
+      "type": "object",
+      "required": [
+        "type",
+        "requestId",
+        "code"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "const": "ACTION_REJECTED"
+        },
+        "requestId": {
+          "$ref": "#/$defs/RequestId"
+        },
+        "code": {
+          "description": "Open set. Known codes are listed in docs/gameplay-protocol.md.",
+          "type": "string",
+          "pattern": "^[A-Z][A-Z0-9_]*$"
+        },
+        "message": {
+          "type": "string"
+        }
+      }
+    },
+    "Animation": {
+      "description": "Open set of avatar animation states. Unknown values fall back to idle.",
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]*$",
+      "examples": [
+        "idle",
+        "walk",
+        "gather",
+        "build"
+      ]
+    },
+    "PlayerMove": {
+      "description": "Peer to host, at most 20 per second.",
+      "type": "object",
+      "required": [
+        "type",
+        "n",
+        "position",
+        "yaw",
+        "animation"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "const": "PLAYER_MOVE"
+        },
+        "n": {
+          "description": "Per-sender counter starting at 1, +1 per message. Receivers drop messages with n not greater than the last seen (initially 0).",
+          "type": "integer",
+          "minimum": 1
+        },
+        "position": {
+          "$ref": "common.schema.json#/$defs/Vec3"
+        },
+        "yaw": {
+          "$ref": "common.schema.json#/$defs/Yaw"
+        },
+        "animation": {
+          "$ref": "#/$defs/Animation"
+        }
+      }
+    },
+    "PlayerMoved": {
+      "description": "Host to peers. Relays each peer's PLAYER_MOVE to everyone else, plus the host's own movement.",
+      "type": "object",
+      "required": [
+        "type",
+        "playerId",
+        "n",
+        "position",
+        "yaw",
+        "animation"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "const": "PLAYER_MOVED"
+        },
+        "playerId": {
+          "$ref": "common.schema.json#/$defs/PlayerId"
+        },
+        "n": {
+          "description": "Per-sender counter starting at 1, +1 per message. Receivers drop messages with n not greater than the last seen (initially 0).",
+          "type": "integer",
+          "minimum": 1
+        },
+        "position": {
+          "$ref": "common.schema.json#/$defs/Vec3"
+        },
+        "yaw": {
+          "$ref": "common.schema.json#/$defs/Yaw"
+        },
+        "animation": {
+          "$ref": "#/$defs/Animation"
+        }
+      }
+    }
+  }
+}

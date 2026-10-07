@@ -1,0 +1,79 @@
+openapi: 3.1.0
+info:
+  title: Island Colony world service
+  version: 1.0.0
+  description: |
+    Deterministic world generation. The same seed always returns the same world config,
+    byte for byte in meaning. Called by the lobby service; also usable directly in development.
+    Schema: ../schemas/world.schema.json. Rules: ../docs/world-config.md.
+servers:
+  - url: http://localhost:8083
+    description: Local development
+security: []
+tags:
+  - name: worlds
+    description: Deterministic world generation.
+  - name: health
+    description: Liveness check.
+paths:
+  /health:
+    get:
+      tags: [health]
+      operationId: getHealth
+      summary: Liveness check.
+      responses:
+        '200':
+          description: Service is up.
+          content:
+            application/json:
+              schema:
+                $ref: ../schemas/common.schema.json#/$defs/Health
+  /api/v1/worlds:
+    post:
+      tags: [worlds]
+      operationId: createWorld
+      summary: Generate a world. Picks a random seed when none is given.
+      requestBody:
+        required: false
+        description: Omit the body or send {} for a random seed.
+        content:
+          application/json:
+            schema:
+              $ref: ../schemas/world.schema.json#/$defs/CreateWorldRequest
+      responses:
+        '201':
+          description: Generated world.
+          content:
+            application/json:
+              schema:
+                $ref: ../schemas/world.schema.json#/$defs/WorldConfig
+        '400':
+          description: VALIDATION_FAILED.
+          content:
+            application/problem+json:
+              schema:
+                $ref: ../schemas/common.schema.json#/$defs/Problem
+  /api/v1/worlds/{seed}:
+    get:
+      tags: [worlds]
+      operationId: getWorld
+      summary: Regenerate the world for a known seed. Equal to POST with the same seed.
+      parameters:
+        - name: seed
+          in: path
+          required: true
+          schema:
+            $ref: ../schemas/common.schema.json#/$defs/WorldSeed
+      responses:
+        '200':
+          description: World for this seed.
+          content:
+            application/json:
+              schema:
+                $ref: ../schemas/world.schema.json#/$defs/WorldConfig
+        '400':
+          description: VALIDATION_FAILED.
+          content:
+            application/problem+json:
+              schema:
+                $ref: ../schemas/common.schema.json#/$defs/Problem

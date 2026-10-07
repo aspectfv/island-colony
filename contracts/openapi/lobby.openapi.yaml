@@ -1,0 +1,266 @@
+openapi: 3.1.0
+info:
+  title: Island Colony lobby service
+  version: 1.0.0
+  description: |
+    Creates and joins lobbies, assigns the host, and runs the session lifecycle.
+    Payload schemas live in ../schemas; examples in ../examples/lobby.
+    Flow and rules: ../docs/session-flow.md and ../docs/lobby-service.md.
+servers:
+  - url: http://localhost:8081
+    description: Local development
+security: []
+tags:
+  - name: lobbies
+    description: Create, join, poll, and leave lobbies.
+  - name: session
+    description: Start, read, and end the session of a lobby.
+  - name: health
+    description: Liveness check.
+paths:
+  /health:
+    get:
+      tags: [health]
+      operationId: getHealth
+      summary: Liveness check.
+      responses:
+        '200':
+          description: Service is up.
+          content:
+            application/json:
+              schema:
+                $ref: ../schemas/common.schema.json#/$defs/Health
+  /api/v1/lobbies:
+    post:
+      tags: [lobbies]
+      operationId: createLobby
+      summary: Create a lobby. The caller becomes the host in slot 0.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: ../schemas/lobby.schema.json#/$defs/CreateLobbyRequest
+      responses:
+        '201':
+          description: Lobby created.
+          content:
+            application/json:
+              schema:
+                $ref: ../schemas/lobby.schema.json#/$defs/LobbyMembership
+        '400':
+          $ref: '#/components/responses/ValidationFailed'
+  /api/v1/lobbies/{lobbyCode}:
+    parameters:
+      - $ref: '#/components/parameters/LobbyCode'
+    get:
+      tags: [lobbies]
+      operationId: getLobby
+      summary: Read lobby state. Polled by every member; the token makes the poll a heartbeat.
+      security:
+        - {}
+        - playerToken: []
+      responses:
+        '200':
+          description: Current lobby state.
+          content:
+            application/json:
+              schema:
+                $ref: ../schemas/lobby.schema.json#/$defs/Lobby
+        '401':
+          $ref: '#/components/responses/InvalidPlayerToken'
+        '404':
+          $ref: '#/components/responses/LobbyNotFound'
+  /api/v1/lobbies/{lobbyCode}/players:
+    parameters:
+      - $ref: '#/components/parameters/LobbyCode'
+    post:
+      tags: [lobbies]
+      operationId: joinLobby
+      summary: Join a waiting lobby. Takes the lowest free slot.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: ../schemas/lobby.schema.json#/$defs/JoinLobbyRequest
+      responses:
+        '201':
+          description: Joined.
+          content:
+            application/json:
+              schema:
+                $ref: ../schemas/lobby.schema.json#/$defs/LobbyMembership
+        '400':
+          $ref: '#/components/responses/ValidationFailed'
+        '404':
+          $ref: '#/components/responses/LobbyNotFound'
+        '409':
+          description: LOBBY_FULL, LOBBY_NOT_WAITING, or NAME_TAKEN.
+          content:
+            application/problem+json:
+              schema:
+                $ref: ../schemas/common.schema.json#/$defs/Problem
+  /api/v1/lobbies/{lobbyCode}/players/{playerId}:
+    parameters:
+      - $ref: '#/components/parameters/LobbyCode'
+      - name: playerId
+        in: path
+        required: true
+        schema:
+          $ref: ../schemas/common.schema.json#/$defs/PlayerId
+    delete:
+      tags: [lobbies]
+      operationId: leaveLobby
+      summary: Leave, or let the host remove a player. If the host leaves a waiting lobby it ends with HOST_LEFT.
+      security:
+        - playerToken: []
+      responses:
+        '204':
+          description: Removed.
+        '401':
+          $ref: '#/components/responses/InvalidPlayerToken'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          description: LOBBY_NOT_FOUND or PLAYER_NOT_FOUND.
+          content:
+            application/problem+json:
+              schema:
+                $ref: ../schemas/common.schema.json#/$defs/Problem
+  /api/v1/lobbies/{lobbyCode}/start:
+    parameters:
+      - $ref: '#/components/parameters/LobbyCode'
+    post:
+      tags: [session]
+      operationId: startSession
+      summary: Host only. Fetches a world from the world service and moves the lobby to IN_PROGRESS.
+      security:
+        - playerToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: ../schemas/lobby.schema.json#/$defs/StartSessionRequest
+      responses:
+        '200':
+          description: Session started.
+          content:
+            application/json:
+              schema:
+                $ref: ../schemas/lobby.schema.json#/$defs/SessionDetails
+        '401':
+          $ref: '#/components/responses/InvalidPlayerToken'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/LobbyNotFound'
+        '409':
+          description: LOBBY_NOT_WAITING, or LOBBY_CHANGED when expectedPlayerIds does not match the members.
+          content:
+            application/problem+json:
+              schema:
+                $ref: ../schemas/common.schema.json#/$defs/Problem
+        '502':
+          description: WORLD_SERVICE_UNAVAILABLE. The lobby stays WAITING so the host can retry.
+          content:
+            application/problem+json:
+              schema:
+                $ref: ../schemas/common.schema.json#/$defs/Problem
+  /api/v1/lobbies/{lobbyCode}/session:
+    parameters:
+      - $ref: '#/components/parameters/LobbyCode'
+    get:
+      tags: [session]
+      operationId: getSession
+      summary: Session details including the world config. Peers call this after SESSION_STARTED.
+      responses:
+        '200':
+          description: Session details.
+          content:
+            application/json:
+              schema:
+                $ref: ../schemas/lobby.schema.json#/$defs/SessionDetails
+        '404':
+          $ref: '#/components/responses/LobbyNotFound'
+        '409':
+          description: SESSION_NOT_STARTED.
+          content:
+            application/problem+json:
+              schema:
+                $ref: ../schemas/common.schema.json#/$defs/Problem
+  /api/v1/lobbies/{lobbyCode}/end:
+    parameters:
+      - $ref: '#/components/parameters/LobbyCode'
+    post:
+      tags: [session]
+      operationId: endSession
+      summary: Host only. Moves the lobby to ENDED.
+      security:
+        - playerToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: ../schemas/lobby.schema.json#/$defs/EndSessionRequest
+      responses:
+        '200':
+          description: Session ended.
+          content:
+            application/json:
+              schema:
+                $ref: ../schemas/lobby.schema.json#/$defs/Lobby
+        '401':
+          $ref: '#/components/responses/InvalidPlayerToken'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/LobbyNotFound'
+        '409':
+          description: SESSION_NOT_IN_PROGRESS.
+          content:
+            application/problem+json:
+              schema:
+                $ref: ../schemas/common.schema.json#/$defs/Problem
+components:
+  securitySchemes:
+    playerToken:
+      type: apiKey
+      in: header
+      name: X-Player-Token
+      description: playerToken from LobbyMembership. See ../schemas/common.schema.json#/$defs/PlayerToken.
+  parameters:
+    LobbyCode:
+      name: lobbyCode
+      in: path
+      required: true
+      description: Case-insensitive on input; always returned uppercase.
+      schema:
+        type: string
+  responses:
+    ValidationFailed:
+      description: VALIDATION_FAILED.
+      content:
+        application/problem+json:
+          schema:
+            $ref: ../schemas/common.schema.json#/$defs/Problem
+    LobbyNotFound:
+      description: LOBBY_NOT_FOUND.
+      content:
+        application/problem+json:
+          schema:
+            $ref: ../schemas/common.schema.json#/$defs/Problem
+    InvalidPlayerToken:
+      description: INVALID_PLAYER_TOKEN. Header missing or not a member of this lobby.
+      content:
+        application/problem+json:
+          schema:
+            $ref: ../schemas/common.schema.json#/$defs/Problem
+    Forbidden:
+      description: NOT_HOST, or removing another player without being the host.
+      content:
+        application/problem+json:
+          schema:
+            $ref: ../schemas/common.schema.json#/$defs/Problem

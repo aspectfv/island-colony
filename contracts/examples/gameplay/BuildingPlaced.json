@@ -1,0 +1,19 @@
+{
+  "type": "BUILDING_PLACED",
+  "seq": 23,
+  "requestId": "r-31",
+  "structure": {
+    "structureId": "structure-1",
+    "structureType": "camp",
+    "position": {
+      "x": 2.5,
+      "z": -1.0
+    },
+    "yaw": 1.5708,
+    "placedBy": "3f6c2a1e-8b4d-4c2e-9a71-0d5e2b7c4f10"
+  },
+  "resources": {
+    "wood": 4,
+    "stone": 1
+  }
+}

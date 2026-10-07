@@ -1,0 +1,20 @@
+{
+  "lobby": {
+    "lobbyCode": "K7QX2M",
+    "status": "WAITING",
+    "hostPlayerId": "3f6c2a1e-8b4d-4c2e-9a71-0d5e2b7c4f10",
+    "maxPlayers": 5,
+    "players": [
+      {
+        "playerId": "3f6c2a1e-8b4d-4c2e-9a71-0d5e2b7c4f10",
+        "displayName": "Aspect",
+        "slot": 0,
+        "joinedAt": "2026-10-07T12:00:05Z"
+      }
+    ],
+    "session": null,
+    "createdAt": "2026-10-07T12:00:05Z"
+  },
+  "playerId": "3f6c2a1e-8b4d-4c2e-9a71-0d5e2b7c4f10",
+  "playerToken": "tok_5f2b8e1c9a4d7036b2e8f1a4c9d07e35"
+}

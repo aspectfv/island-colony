@@ -1,0 +1,14 @@
+{
+  "name": "island-colony-contracts",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node scripts/validate.mjs",
+    "lint": "redocly lint openapi/lobby.openapi.yaml openapi/world.openapi.yaml openapi/metadata.openapi.yaml"
+  },
+  "devDependencies": {
+    "@redocly/cli": "^2.59.0",
+    "ajv": "^8.20.0",
+    "ajv-formats": "^3.0.1"
+  }
+}

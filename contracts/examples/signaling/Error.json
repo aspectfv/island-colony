@@ -1,0 +1,5 @@
+{
+  "type": "ERROR",
+  "code": "ROOM_FULL",
+  "message": "Room K7QX2M already has 5 players."
+}

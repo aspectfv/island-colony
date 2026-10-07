@@ -1,0 +1,8 @@
+extends:
+  - recommended
+rules:
+  # Services run locally for the MVP, unlicensed and private to the team.
+  no-server-example.com: off
+  info-license: off
+  # Health checks have no failure response; an unreachable service is the failure.
+  operation-4xx-response: off

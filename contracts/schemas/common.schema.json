@@ -1,0 +1,135 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/aspectfv/island-colony/contracts/schemas/common.schema.json",
+  "title": "Common definitions",
+  "$defs": {
+    "PlayerId": {
+      "description": "Assigned by the lobby service on create or join. Lowercase UUID v4.",
+      "type": "string",
+      "format": "uuid"
+    },
+    "SessionId": {
+      "description": "Assigned by the lobby service when the host starts a session. Lowercase UUID v4.",
+      "type": "string",
+      "format": "uuid"
+    },
+    "LobbyCode": {
+      "description": "Human-friendly lobby identifier players type to join. 6 characters, no ambiguous letters or digits.",
+      "type": "string",
+      "pattern": "^[ABCDEFGHJKLMNPQRSTUVWXYZ23456789]{6}$"
+    },
+    "PlayerToken": {
+      "description": "Opaque secret returned once on create or join. Sent as the X-Player-Token header. Never shown to other players.",
+      "type": "string",
+      "minLength": 16,
+      "maxLength": 128
+    },
+    "DisplayName": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 16
+    },
+    "Slot": {
+      "description": "Seat index in the lobby, 0-based. The host is slot 0. Clients map slots to avatar colors.",
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 15
+    },
+    "WorldSeed": {
+      "description": "Non-negative 31-bit integer so it fits a signed 32-bit int in every stack.",
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 2147483647
+    },
+    "ContentId": {
+      "description": "Identifier for data-driven content: resource types, node types, structure types, objectives. Lowercase kebab-case. Open set: new values are added in the world config, not in schemas.",
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9]*(-[a-z0-9]+)*$",
+      "maxLength": 48
+    },
+    "EntityId": {
+      "description": "Identifier for an instance in the world: a resource node (tree-0042) or a placed structure (structure-3).",
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]*-[0-9]+$",
+      "maxLength": 64
+    },
+    "Timestamp": {
+      "description": "ISO 8601 date-time in UTC with a Z suffix.",
+      "type": "string",
+      "format": "date-time"
+    },
+    "Vec2": {
+      "description": "Point on the ground plane in meters. See docs/conventions.md for axes.",
+      "type": "object",
+      "required": ["x", "z"],
+      "additionalProperties": false,
+      "properties": {
+        "x": { "type": "number" },
+        "z": { "type": "number" }
+      }
+    },
+    "Vec3": {
+      "description": "World position in meters. Y is up.",
+      "type": "object",
+      "required": ["x", "y", "z"],
+      "additionalProperties": false,
+      "properties": {
+        "x": { "type": "number" },
+        "y": { "type": "number" },
+        "z": { "type": "number" }
+      }
+    },
+    "Yaw": {
+      "description": "Rotation about +Y in radians, normalized to [-PI, PI]. 0 faces -Z.",
+      "type": "number",
+      "minimum": -3.1416,
+      "maximum": 3.1416
+    },
+    "ResourceAmounts": {
+      "description": "Map from resource type to a non-negative whole amount. Keys are resource types declared in the world config rules. Missing keys mean 0.",
+      "type": "object",
+      "propertyNames": { "$ref": "#/$defs/ContentId" },
+      "additionalProperties": { "type": "integer", "minimum": 0 }
+    },
+    "Problem": {
+      "description": "Error body for every REST service, following RFC 9457 (application/problem+json) with a required machine-readable code.",
+      "type": "object",
+      "required": ["status", "title", "code"],
+      "additionalProperties": false,
+      "properties": {
+        "type": { "type": "string", "default": "about:blank" },
+        "status": { "type": "integer", "minimum": 400, "maximum": 599 },
+        "title": { "type": "string", "description": "Short human summary. Stable per code." },
+        "detail": { "type": "string", "description": "Human explanation of this occurrence. Safe to show in the UI." },
+        "code": {
+          "description": "UPPER_SNAKE_CASE error code. Open set: clients must handle unknown codes by showing detail or title.",
+          "type": "string",
+          "pattern": "^[A-Z][A-Z0-9_]*$"
+        },
+        "errors": {
+          "description": "Field-level validation failures. Present only with code VALIDATION_FAILED.",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["field", "message"],
+            "additionalProperties": false,
+            "properties": {
+              "field": { "type": "string", "description": "JSON Pointer or dotted path to the field." },
+              "message": { "type": "string" }
+            }
+          }
+        }
+      }
+    },
+    "Health": {
+      "type": "object",
+      "required": ["status", "service"],
+      "additionalProperties": false,
+      "properties": {
+        "status": { "const": "ok" },
+        "service": { "type": "string" },
+        "contractsVersion": { "type": "string", "description": "Value of contracts/VERSION this build implements." }
+      }
+    }
+  }
+}
