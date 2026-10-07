@@ -2,6 +2,7 @@ import { createAvatar } from "./player/avatar";
 import { placeCamera } from "./player/follow-camera";
 import { PlayerInput } from "./player/input";
 import { LocalPlayer } from "./player/local-player";
+import { RemoteAvatars } from "./player/remote-avatars";
 import { Targeting } from "./player/targeting";
 import { fixtureWorld } from "./shared/fixture-world";
 import { createIsland } from "./world/island";
@@ -24,6 +25,8 @@ const structures = new StructureLayer(fixtureWorld.island);
 view.scene.add(structures.group);
 const avatar = createAvatar(slot);
 view.scene.add(avatar);
+const remoteAvatars = new RemoteAvatars();
+view.scene.add(remoteAvatars.group);
 
 const targeting = new Targeting(
   fixtureWorld.resourceNodes,
@@ -42,6 +45,7 @@ if (import.meta.env.DEV && new URLSearchParams(location.search).has("demo")) {
       world: fixtureWorld,
       structures,
       resourceNodes,
+      remoteAvatars,
       onFrame: (task) => frameTasks.push(task),
     }),
   );
@@ -53,6 +57,7 @@ startRenderLoop(view, (deltaSeconds) => {
   player.update(deltaSeconds, input);
   resourceNodes.update(deltaSeconds);
   targeting.update(deltaSeconds, player.current().position);
+  remoteAvatars.update(performance.now());
   for (const task of frameTasks) task(deltaSeconds);
   placeCamera(view.camera, fixtureWorld.island, player.current().position, player.orbit);
 });
