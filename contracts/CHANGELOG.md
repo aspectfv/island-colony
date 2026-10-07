@@ -3,6 +3,11 @@
 Contract versions follow semver. See `docs/extending.md` for what counts as a patch, minor, or
 major change.
 
+## 1.0.1 (2026-10-07)
+
+- Moved the reference terrain sampler to `scripts/sample-height.mjs` so service and client tests
+  can import it. No behavior change
+
 ## 1.0.0 (2026-10-07)
 
 First agreed contracts.
