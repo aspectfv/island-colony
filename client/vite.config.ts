@@ -13,5 +13,7 @@ export default defineConfig({
   },
   test: {
     environment: "node",
+    // e2e/ holds the Playwright smoke test, run with npm run test:smoke.
+    include: ["src/**/*.test.ts"],
   },
 });
