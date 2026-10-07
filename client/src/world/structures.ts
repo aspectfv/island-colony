@@ -89,7 +89,12 @@ export class StructureLayer {
   place(structure: PlacedStructure): void {
     if (this.group.getObjectByName(structure.structureId)) return;
     const holder = new Group();
-    holder.add((modelsByStructureType[structure.structureType] ?? createPlaceholder)());
+    const model = (modelsByStructureType[structure.structureType] ?? createPlaceholder)();
+    model.traverse((part) => {
+      part.castShadow = true;
+      part.receiveShadow = true;
+    });
+    holder.add(model);
     holder.name = structure.structureId;
     const { x, z } = structure.position;
     holder.position.set(x, sampleHeight(this.island, x, z), z);

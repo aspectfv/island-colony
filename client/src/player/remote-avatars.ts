@@ -1,6 +1,6 @@
 import { Group } from "three";
 import type { PlayerMoved } from "../shared/contracts/gameplay";
-import { createAvatar } from "./avatar";
+import { animateAvatar, createAvatar } from "./avatar";
 
 export interface PoseSample {
   receivedAt: number;
@@ -95,6 +95,7 @@ export class RemoteAvatars {
       player.avatar.visible = true;
       player.avatar.position.set(pose.x, pose.y, pose.z);
       player.avatar.rotation.y = pose.yaw;
+      animateAvatar(player.avatar, pose.animation, now / 1000);
     }
   }
 }

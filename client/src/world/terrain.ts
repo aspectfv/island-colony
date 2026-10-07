@@ -69,5 +69,6 @@ export function createTerrainMesh(island: Island): Mesh {
     new MeshLambertMaterial({ vertexColors: true, flatShading: true }),
   );
   terrain.name = "terrain";
+  terrain.receiveShadow = true;
   return terrain;
 }

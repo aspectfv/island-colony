@@ -3,6 +3,7 @@ import {
   DirectionalLight,
   Fog,
   HemisphereLight,
+  PCFShadowMap,
   PerspectiveCamera,
   Scene,
   Timer,
@@ -18,13 +19,27 @@ export interface WorldView {
 export function createWorldView(canvas: HTMLCanvasElement): WorldView {
   const renderer = new WebGLRenderer({ canvas, antialias: true });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = PCFShadowMap;
 
   const scene = new Scene();
   scene.background = new Color(0x9fd4f0);
   scene.fog = new Fog(0x9fd4f0, 250, 700);
   scene.add(new HemisphereLight(0xdff3ff, 0x5a7d3a, 1.2));
-  const sun = new DirectionalLight(0xffffff, 1.5);
-  sun.position.set(40, 80, 30);
+  const sun = new DirectionalLight(0xfff4e0, 1.8);
+  sun.position.set(60, 120, 40);
+  // One shadow map over the whole island: about 10 cm per texel, enough for low-poly shapes.
+  sun.castShadow = true;
+  sun.shadow.mapSize.set(2048, 2048);
+  Object.assign(sun.shadow.camera, {
+    left: -110,
+    right: 110,
+    top: 110,
+    bottom: -110,
+    near: 1,
+    far: 320,
+  });
+  sun.shadow.normalBias = 0.05;
   scene.add(sun);
 
   const camera = new PerspectiveCamera(60, 1, 0.1, 1000);
