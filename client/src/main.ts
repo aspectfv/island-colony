@@ -1,4 +1,4 @@
-import { createAvatar } from "./player/avatar";
+import { animateAvatar, createAvatar } from "./player/avatar";
 import { placeCamera } from "./player/follow-camera";
 import { PlayerInput } from "./player/input";
 import { LocalPlayer } from "./player/local-player";
@@ -51,10 +51,15 @@ if (import.meta.env.DEV && new URLSearchParams(location.search).has("demo")) {
   );
 }
 
+if (import.meta.env.DEV && new URLSearchParams(location.search).has("stats")) {
+  void import("./dev/stats").then(({ startStats }) => frameTasks.push(startStats(view.renderer)));
+}
+
 fitToWindow(view);
 window.addEventListener("resize", () => fitToWindow(view));
 startRenderLoop(view, (deltaSeconds) => {
   player.update(deltaSeconds, input);
+  animateAvatar(avatar, player.current().animation, performance.now() / 1000);
   resourceNodes.update(deltaSeconds);
   targeting.update(deltaSeconds, player.current().position);
   remoteAvatars.update(performance.now());

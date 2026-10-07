@@ -51,6 +51,7 @@ const modelsByNodeType: Record<string, () => Object3D> = {
 
 export function createResourceNode(node: ResourceNode): Object3D {
   const model = (modelsByNodeType[node.nodeType] ?? createPlaceholder)();
+  model.traverse((part) => (part.castShadow = true));
   const holder = new Group();
   holder.add(model);
   holder.name = node.resourceId;
