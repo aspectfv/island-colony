@@ -30,3 +30,9 @@ and change a contract only in a PR that updates every affected side.
 Every part should run against mocks, so nobody waits on another service. The client talks to
 backends through adapter interfaces and can switch between mock and real implementations
 without touching gameplay code.
+
+## Continuous integration
+
+Every pull request runs `.github/workflows/ci.yml`. It checks only the parts the PR touches:
+contracts, client, and each service once it exists. A PR can merge only when the `ci-passed` check
+is green.
