@@ -2,11 +2,13 @@
 // store exists. Open the client with ?demo to run it. Never imported in production builds.
 import type { PlacedStructure } from "../shared/contracts/gameplay";
 import type { WorldConfig } from "../shared/contracts/world";
+import type { ResourceNodeLayer } from "../world/resource-nodes";
 import type { StructureLayer } from "../world/structures";
 
 export interface DemoContext {
   world: WorldConfig;
   structures: StructureLayer;
+  resourceNodes: ResourceNodeLayer;
   onFrame: (task: (deltaSeconds: number) => void) => void;
 }
 
@@ -42,12 +44,33 @@ function scheduleStructures(
   }
 }
 
+// Gathers the nodes nearest the colony one charge at a time, so some shake and some disappear.
+function scheduleGathering(
+  context: DemoContext,
+  at: (seconds: number, action: () => void) => void,
+) {
+  const nearest = [...context.world.resourceNodes]
+    .sort((a, b) => Math.hypot(a.position.x, a.position.z) - Math.hypot(b.position.x, b.position.z))
+    .slice(0, 6);
+  const charges = Object.fromEntries(
+    context.world.rules.nodeTypes.map((type) => [type.nodeType, type.charges]),
+  );
+  let seconds = 1;
+  for (const node of nearest) {
+    for (let left = (charges[node.nodeType] ?? 1) - 1; left >= 0; left--) {
+      seconds += 0.6;
+      at(seconds, () => context.resourceNodes.gathered(node.resourceId, left));
+    }
+  }
+}
+
 export function startDemo(context: DemoContext): void {
   let elapsed = 0;
   const pending: Array<{ seconds: number; action: () => void }> = [];
   const at = (seconds: number, action: () => void) => pending.push({ seconds, action });
 
   scheduleStructures(context, at);
+  scheduleGathering(context, at);
 
   context.onFrame((deltaSeconds) => {
     elapsed += deltaSeconds;

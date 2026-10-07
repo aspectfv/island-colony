@@ -58,12 +58,77 @@ export function createResourceNode(node: ResourceNode): Object3D {
   holder.position.set(node.position.x, node.position.y, node.position.z);
   holder.rotation.y = node.yaw;
   holder.scale.setScalar(node.scale);
+  holder.userData.baseScale = node.scale;
   return holder;
 }
 
-export function createResourceNodes(nodes: ResourceNode[]): Group {
-  const group = new Group();
-  group.name = "resource-nodes";
-  for (const node of nodes) group.add(createResourceNode(node));
-  return group;
+const SHAKE_SECONDS = 0.35;
+const SHRINK_SECONDS = 0.4;
+
+interface NodeAnimation {
+  elapsed: number;
+  depleting: boolean;
+}
+
+// Resource nodes that react to gathering: a short shake on every gather, then shrinking away
+// when the last charge is taken.
+export class ResourceNodeLayer {
+  readonly group = new Group();
+  private readonly animations = new Map<string, NodeAnimation>();
+  private readonly depleted = new Set<string>();
+
+  constructor(nodes: ResourceNode[]) {
+    this.group.name = "resource-nodes";
+    for (const node of nodes) this.group.add(createResourceNode(node));
+  }
+
+  isAvailable(resourceId: string): boolean {
+    return !this.depleted.has(resourceId) && this.group.getObjectByName(resourceId) !== undefined;
+  }
+
+  // From RESOURCE_GATHERED.
+  gathered(resourceId: string, remainingCharges: number): void {
+    if (!this.isAvailable(resourceId)) return;
+    const depleting = remainingCharges === 0;
+    if (depleting) this.depleted.add(resourceId);
+    this.animations.set(resourceId, { elapsed: 0, depleting });
+  }
+
+  // From a snapshot's nodeCharges: depleted nodes disappear at once, without animating.
+  applyCharges(nodeCharges: Record<string, number>): void {
+    for (const [resourceId, charges] of Object.entries(nodeCharges)) {
+      if (charges === 0) this.remove(resourceId);
+    }
+  }
+
+  update(deltaSeconds: number): void {
+    for (const [resourceId, animation] of this.animations) {
+      const node = this.group.getObjectByName(resourceId);
+      if (!node) {
+        this.animations.delete(resourceId);
+        continue;
+      }
+      animation.elapsed += deltaSeconds;
+      const shake = Math.max(0, 1 - animation.elapsed / SHAKE_SECONDS);
+      node.rotation.z = Math.sin(animation.elapsed * 40) * 0.15 * shake;
+
+      if (!animation.depleting) {
+        if (animation.elapsed >= SHAKE_SECONDS) this.animations.delete(resourceId);
+        continue;
+      }
+      const shrinking = (animation.elapsed - SHAKE_SECONDS) / SHRINK_SECONDS;
+      if (shrinking >= 1) {
+        this.remove(resourceId);
+      } else if (shrinking > 0) {
+        node.scale.setScalar((node.userData.baseScale as number) * (1 - shrinking));
+      }
+    }
+  }
+
+  private remove(resourceId: string): void {
+    const node = this.group.getObjectByName(resourceId);
+    if (node) this.group.remove(node);
+    this.depleted.add(resourceId);
+    this.animations.delete(resourceId);
+  }
 }

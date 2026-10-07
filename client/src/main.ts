@@ -4,6 +4,7 @@ import { PlayerInput } from "./player/input";
 import { LocalPlayer } from "./player/local-player";
 import { fixtureWorld } from "./shared/fixture-world";
 import { createIsland } from "./world/island";
+import { ResourceNodeLayer } from "./world/resource-nodes";
 import { StructureLayer } from "./world/structures";
 import { createWorldView, fitToWindow, startRenderLoop } from "./world/view";
 
@@ -16,6 +17,8 @@ if (!spawn) throw new Error(`World has no spawn point for slot ${slot}`);
 
 const view = createWorldView(canvas);
 view.scene.add(createIsland(fixtureWorld));
+const resourceNodes = new ResourceNodeLayer(fixtureWorld.resourceNodes);
+view.scene.add(resourceNodes.group);
 const structures = new StructureLayer(fixtureWorld.island);
 view.scene.add(structures.group);
 const avatar = createAvatar(slot);
@@ -27,7 +30,12 @@ const player = new LocalPlayer(fixtureWorld.island, spawn, avatar);
 const frameTasks: Array<(deltaSeconds: number) => void> = [];
 if (import.meta.env.DEV && new URLSearchParams(location.search).has("demo")) {
   void import("./dev/demo").then(({ startDemo }) =>
-    startDemo({ world: fixtureWorld, structures, onFrame: (task) => frameTasks.push(task) }),
+    startDemo({
+      world: fixtureWorld,
+      structures,
+      resourceNodes,
+      onFrame: (task) => frameTasks.push(task),
+    }),
   );
 }
 
@@ -35,6 +43,7 @@ fitToWindow(view);
 window.addEventListener("resize", () => fitToWindow(view));
 startRenderLoop(view, (deltaSeconds) => {
   player.update(deltaSeconds, input);
+  resourceNodes.update(deltaSeconds);
   for (const task of frameTasks) task(deltaSeconds);
   placeCamera(view.camera, fixtureWorld.island, player.current().position, player.orbit);
 });
