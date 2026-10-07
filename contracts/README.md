@@ -1,8 +1,8 @@
 # Contracts
 
 Shared formats that every part of the game depends on. A contract is agreed here before code that
-uses it is written. Changing one needs a PR that updates every affected side, reviewed by each
-owner.
+uses it is written. Changing one needs a PR that updates every affected side, approved by the
+project lead.
 
 To define:
 
