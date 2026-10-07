@@ -17,5 +17,6 @@ Closes #
 - [ ] Works in local mode with mocks; works in integrated mode if the real service exists
 - [ ] Tests cover rules, validation and protocol handling
 - [ ] Formatter and linter clean
+- [ ] CI is green
 - [ ] README updated if run commands or configuration changed
 - [ ] No secrets, debug leftovers or commented-out code
