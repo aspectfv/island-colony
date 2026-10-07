@@ -12,18 +12,22 @@
     "test": "vitest run",
     "lint": "eslint . && prettier --check .",
     "format": "prettier --write .",
-    "contracts:types": "node scripts/generate-contract-types.mjs"
+    "contracts:types": "node scripts/generate-contract-types.mjs",
+    "test:smoke": "playwright test"
   },
   "dependencies": {
     "three": "^0.186.1"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
+    "@playwright/test": "^1.63.0",
+    "@types/pngjs": "^6.0.5",
     "@types/three": "^0.186.0",
     "eslint": "^10.12.0",
     "eslint-config-prettier": "^10.1.8",
     "globals": "^17.13.0",
     "json-schema-to-typescript": "^16.0.0",
+    "pngjs": "^7.0.0",
     "prettier": "^3.9.9",
     "typescript": "~6.0.3",
     "typescript-eslint": "^8.71.1",

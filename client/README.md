@@ -6,15 +6,16 @@ Three.js game client, built with TypeScript and Vite.
 
 Run from `client/`. Needs Node 22 or later.
 
-| Task                          | Command                                                                |
-| ----------------------------- | ---------------------------------------------------------------------- |
-| Install                       | `npm install`                                                          |
-| Run locally                   | `npm run dev`, then open http://localhost:5173                         |
-| Build (type check and bundle) | `npm run build`                                                        |
-| Test                          | `npm test`                                                             |
-| Lint and check formatting     | `npm run lint`                                                         |
-| Format                        | `npm run format`                                                       |
-| Regenerate contract types     | `npm run contracts:types` (after any change in `../contracts/schemas`) |
+| Task                                             | Command                                                                |
+| ------------------------------------------------ | ---------------------------------------------------------------------- |
+| Install                                          | `npm install`                                                          |
+| Run locally                                      | `npm run dev`, then open http://localhost:5173                         |
+| Build (type check and bundle)                    | `npm run build`                                                        |
+| Test                                             | `npm test`                                                             |
+| Browser smoke test (after a build; needs Chrome) | `npm run test:smoke`                                                   |
+| Lint and check formatting                        | `npm run lint`                                                         |
+| Format                                           | `npm run format`                                                       |
+| Regenerate contract types                        | `npm run contracts:types` (after any change in `../contracts/schemas`) |
 
 ## Modules
 
