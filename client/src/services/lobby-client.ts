@@ -41,7 +41,7 @@ export interface LobbyClient {
    * Leave a lobby: DELETE /api/v1/lobbies/{lobbyCode}/players/{playerId}
    * Player removes themselves or host removes someone.
    */
-  leaveLobby(lobbyCode: string, playerToken: string, targetPlayerId?: string): Promise<void>;
+  leaveLobby(lobbyCode: string, playerId: string, playerToken: string): Promise<void>;
 
   /**
    * Start a session: POST /api/v1/lobbies/{lobbyCode}/start

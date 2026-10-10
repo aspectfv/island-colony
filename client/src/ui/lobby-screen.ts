@@ -1,4 +1,4 @@
-import type { Lobby } from "../shared/contracts/lobby";
+import type { Lobby, SessionDetails } from "../shared/contracts/lobby";
 import type { LobbyClient } from "../services/lobby-client";
 import { ProblemError } from "../services/problem";
 import { toast } from "./toast";
@@ -11,7 +11,7 @@ export interface LobbyScreenOptions {
   playerToken: string;
   client: LobbyClient;
   onLeave: () => void;
-  onSessionStarted: (sessionDetails?: unknown) => void;
+  onSessionStarted: (sessionDetails: SessionDetails) => void;
 }
 
 export class LobbyScreen {
@@ -21,10 +21,12 @@ export class LobbyScreen {
   private playerToken: string;
   private client: LobbyClient;
   private onLeave: () => void;
-  private onSessionStarted: (sessionDetails?: unknown) => void;
-  private pollIntervalId: number | null = null;
+  private onSessionStarted: (sessionDetails: SessionDetails) => void;
+  private pollTimeoutId: number | null = null;
+  private disposed = false;
   private isStarting = false;
   private isLeaving = false;
+  private isTickInFlight = false;
 
   constructor(options: LobbyScreenOptions) {
     this.lobby = options.lobby;
@@ -38,7 +40,7 @@ export class LobbyScreen {
     this.element.className = "ui-screen lobby-screen";
 
     this.render();
-    this.startPolling();
+    this.schedulePoll(1000);
   }
 
   getElement(): HTMLElement {
@@ -46,56 +48,80 @@ export class LobbyScreen {
   }
 
   destroy(): void {
+    this.disposed = true;
     this.stopPolling();
   }
 
-  private startPolling(): void {
+  private schedulePoll(delayMs = 1000): void {
+    if (this.disposed || this.isStarting || this.isLeaving) return;
     this.stopPolling();
-    this.pollIntervalId = window.setInterval(async () => {
-      try {
-        const updated = await this.client.getLobby(this.lobby.lobbyCode, this.playerToken);
-        this.lobby = updated;
-
-        if (updated.status === "ENDED") {
-          this.stopPolling();
-          toast.showInfo(
-            updated.endReason === "HOST_LEFT"
-              ? "The host left the lobby."
-              : "This lobby has ended.",
-            "Lobby Closed",
-          );
-          this.onLeave();
-          return;
-        }
-
-        if (updated.status === "IN_PROGRESS") {
-          this.stopPolling();
-          try {
-            const session = await this.client.getSession(this.lobby.lobbyCode);
-            this.onSessionStarted(session);
-          } catch {
-            this.onSessionStarted();
-          }
-          return;
-        }
-
-        this.updateView();
-      } catch (err: unknown) {
-        if (err instanceof ProblemError) {
-          if (err.code === "INVALID_PLAYER_TOKEN" || err.code === "LOBBY_NOT_FOUND") {
-            this.stopPolling();
-            toast.showProblem(err.problem);
-            this.onLeave();
-          }
-        }
-      }
-    }, 1000);
+    this.pollTimeoutId = window.setTimeout(() => {
+      void this.pollTick();
+    }, delayMs);
   }
 
   private stopPolling(): void {
-    if (this.pollIntervalId !== null) {
-      clearInterval(this.pollIntervalId);
-      this.pollIntervalId = null;
+    if (this.pollTimeoutId !== null) {
+      clearTimeout(this.pollTimeoutId);
+      this.pollTimeoutId = null;
+    }
+  }
+
+  private async pollTick(): Promise<void> {
+    if (this.disposed || this.isStarting || this.isLeaving || this.isTickInFlight) return;
+    this.isTickInFlight = true;
+
+    try {
+      const updated = await this.client.getLobby(this.lobby.lobbyCode, this.playerToken);
+      if (this.disposed || this.isStarting || this.isLeaving) return;
+
+      this.lobby = updated;
+
+      if (updated.status === "ENDED") {
+        this.disposed = true;
+        this.stopPolling();
+        toast.showInfo(
+          updated.endReason === "HOST_LEFT" ? "The host left the lobby." : "This lobby has ended.",
+          "Lobby Closed",
+        );
+        this.onLeave();
+        return;
+      }
+
+      if (updated.status === "IN_PROGRESS") {
+        try {
+          const session = await this.client.getSession(this.lobby.lobbyCode);
+          if (this.disposed || this.isStarting || this.isLeaving) return;
+
+          this.disposed = true;
+          this.stopPolling();
+          this.onSessionStarted(session);
+          return;
+        } catch {
+          if (this.disposed || this.isStarting || this.isLeaving) return;
+          // Session is starting but details are not ready yet; retry on next tick
+          this.schedulePoll(1000);
+          return;
+        }
+      }
+
+      this.updateView();
+    } catch (err: unknown) {
+      if (this.disposed || this.isStarting || this.isLeaving) return;
+      if (err instanceof ProblemError) {
+        if (err.code === "INVALID_PLAYER_TOKEN" || err.code === "LOBBY_NOT_FOUND") {
+          this.disposed = true;
+          this.stopPolling();
+          toast.showProblem(err.problem);
+          this.onLeave();
+          return;
+        }
+      }
+    } finally {
+      this.isTickInFlight = false;
+      if (!this.disposed && !this.isStarting && !this.isLeaving) {
+        this.schedulePoll(1000);
+      }
     }
   }
 
@@ -110,9 +136,7 @@ export class LobbyScreen {
           <div class="lobby-code-box">
             <div>
               <div class="lobby-code-label">Lobby Code</div>
-              <div class="lobby-code-tag" id="copy-code-btn" title="Click to copy code">
-                ${this.lobby.lobbyCode}
-              </div>
+              <div class="lobby-code-tag" id="copy-code-btn" title="Click to copy code"></div>
             </div>
           </div>
           <div>
@@ -142,6 +166,11 @@ export class LobbyScreen {
       </div>
     `;
 
+    const copyBtn = this.element.querySelector<HTMLElement>("#copy-code-btn");
+    if (copyBtn) {
+      copyBtn.textContent = this.lobby.lobbyCode;
+    }
+
     this.updateSlots();
     this.bindEvents();
   }
@@ -154,47 +183,82 @@ export class LobbyScreen {
     const container = this.element.querySelector("#slots-container");
     if (!container) return;
 
+    container.innerHTML = "";
+
     const maxSlots = this.lobby.maxPlayers || 5;
     const playerMap = new Map(this.lobby.players.map((p) => [p.slot, p]));
 
-    let slotsHtml = "";
     for (let slot = 0; slot < maxSlots; slot++) {
       const color = SLOT_COLORS_HEX[slot] || "#888888";
       const player = playerMap.get(slot);
+
+      const slotCard = document.createElement("div");
 
       if (player) {
         const isHost = player.playerId === this.lobby.hostPlayerId;
         const isYou = player.playerId === this.playerId;
 
-        slotsHtml += `
-          <div class="slot-card is-occupied">
-            <div class="slot-left">
-              <div class="slot-avatar-dot" style="background-color: ${color};">
-                ${slot + 1}
-              </div>
-              <div class="slot-name">${this.escapeHtml(player.displayName)}</div>
-            </div>
-            <div class="slot-badges">
-              ${isHost ? '<span class="badge badge-host">Host</span>' : ""}
-              ${isYou ? '<span class="badge badge-you">You</span>' : ""}
-            </div>
-          </div>
-        `;
-      } else {
-        slotsHtml += `
-          <div class="slot-card is-empty">
-            <div class="slot-left">
-              <div class="slot-avatar-dot" style="background-color: rgba(255, 255, 255, 0.1); color: #94a3b8;">
-                ${slot + 1}
-              </div>
-              <div class="slot-name" style="color: #64748b; font-weight: 500;">Waiting for player...</div>
-            </div>
-          </div>
-        `;
-      }
-    }
+        slotCard.className = "slot-card is-occupied";
 
-    container.innerHTML = slotsHtml;
+        const slotLeft = document.createElement("div");
+        slotLeft.className = "slot-left";
+
+        const dot = document.createElement("div");
+        dot.className = "slot-avatar-dot";
+        dot.style.backgroundColor = color;
+        dot.textContent = String(slot + 1);
+
+        const nameEl = document.createElement("div");
+        nameEl.className = "slot-name";
+        nameEl.textContent = player.displayName;
+
+        slotLeft.appendChild(dot);
+        slotLeft.appendChild(nameEl);
+
+        const badges = document.createElement("div");
+        badges.className = "slot-badges";
+
+        if (isHost) {
+          const hostBadge = document.createElement("span");
+          hostBadge.className = "badge badge-host";
+          hostBadge.textContent = "Host";
+          badges.appendChild(hostBadge);
+        }
+
+        if (isYou) {
+          const youBadge = document.createElement("span");
+          youBadge.className = "badge badge-you";
+          youBadge.textContent = "You";
+          badges.appendChild(youBadge);
+        }
+
+        slotCard.appendChild(slotLeft);
+        slotCard.appendChild(badges);
+      } else {
+        slotCard.className = "slot-card is-empty";
+
+        const slotLeft = document.createElement("div");
+        slotLeft.className = "slot-left";
+
+        const dot = document.createElement("div");
+        dot.className = "slot-avatar-dot";
+        dot.style.backgroundColor = "rgba(255, 255, 255, 0.1)";
+        dot.style.color = "#94a3b8";
+        dot.textContent = String(slot + 1);
+
+        const nameEl = document.createElement("div");
+        nameEl.className = "slot-name";
+        nameEl.style.color = "#64748b";
+        nameEl.style.fontWeight = "500";
+        nameEl.textContent = "Waiting for player...";
+
+        slotLeft.appendChild(dot);
+        slotLeft.appendChild(nameEl);
+        slotCard.appendChild(slotLeft);
+      }
+
+      container.appendChild(slotCard);
+    }
   }
 
   private bindEvents(): void {
@@ -207,39 +271,46 @@ export class LobbyScreen {
 
     const leaveBtn = this.element.querySelector<HTMLButtonElement>("#leave-btn");
     leaveBtn?.addEventListener("click", async () => {
-      if (this.isLeaving) return;
+      if (this.isLeaving || this.disposed) return;
       this.isLeaving = true;
       leaveBtn.disabled = true;
       this.stopPolling();
 
       try {
-        await this.client.leaveLobby(this.lobby.lobbyCode, this.playerToken);
+        await this.client.leaveLobby(this.lobby.lobbyCode, this.playerId, this.playerToken);
       } catch (err: unknown) {
-        // Ignore or log error on leave
         console.warn("Error leaving lobby:", err);
       } finally {
+        this.disposed = true;
         this.onLeave();
       }
     });
 
     const startBtn = this.element.querySelector<HTMLButtonElement>("#start-btn");
     startBtn?.addEventListener("click", async () => {
-      if (this.isStarting || !this.isHost()) return;
+      if (this.isStarting || !this.isHost() || this.disposed) return;
       this.isStarting = true;
       startBtn.disabled = true;
       startBtn.textContent = "Starting...";
+      this.stopPolling();
 
       try {
         const expectedPlayerIds = this.lobby.players.map((p) => p.playerId);
         const session = await this.client.startSession(this.lobby.lobbyCode, this.playerToken, {
           expectedPlayerIds,
         });
-        this.stopPolling();
+
+        if (this.disposed) return;
+
+        this.disposed = true;
         this.onSessionStarted(session);
       } catch (err: unknown) {
+        if (this.disposed) return;
         this.isStarting = false;
         startBtn.disabled = false;
         startBtn.textContent = "Start Session";
+        this.schedulePoll(1000);
+
         if (err instanceof ProblemError) {
           toast.showProblem(err.problem);
         } else {
@@ -247,11 +318,5 @@ export class LobbyScreen {
         }
       }
     });
-  }
-
-  private escapeHtml(str: string): string {
-    const div = document.createElement("div");
-    div.textContent = str;
-    return div.innerHTML;
   }
 }

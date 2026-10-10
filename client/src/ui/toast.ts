@@ -22,21 +22,38 @@ class ToastManager {
     const toast = document.createElement("div");
     toast.className = "toast toast-error";
 
-    const friendlyMessage = formatProblemMessage(problem);
+    const body = document.createElement("div");
+    body.className = "toast-body";
 
-    toast.innerHTML = `
-      <div class="toast-body">
-        <div class="toast-header">
-          <span class="toast-code-badge">${problem.code}</span>
-          <span class="toast-title">${problem.title || "Request Failed"}</span>
-        </div>
-        <p class="toast-desc">${friendlyMessage}</p>
-      </div>
-      <button class="toast-close" aria-label="Close">&times;</button>
-    `;
+    const header = document.createElement("div");
+    header.className = "toast-header";
 
-    const closeBtn = toast.querySelector(".toast-close");
-    closeBtn?.addEventListener("click", () => toast.remove());
+    const badge = document.createElement("span");
+    badge.className = "toast-code-badge";
+    badge.textContent = problem.code;
+
+    const title = document.createElement("span");
+    title.className = "toast-title";
+    title.textContent = problem.title || "Request Failed";
+
+    header.appendChild(badge);
+    header.appendChild(title);
+
+    const desc = document.createElement("p");
+    desc.className = "toast-desc";
+    desc.textContent = formatProblemMessage(problem);
+
+    body.appendChild(header);
+    body.appendChild(desc);
+
+    const closeBtn = document.createElement("button");
+    closeBtn.className = "toast-close";
+    closeBtn.setAttribute("aria-label", "Close");
+    closeBtn.textContent = "×";
+    closeBtn.addEventListener("click", () => toast.remove());
+
+    toast.appendChild(body);
+    toast.appendChild(closeBtn);
 
     container.appendChild(toast);
     setTimeout(() => {
@@ -52,76 +69,60 @@ class ToastManager {
       return;
     }
 
-    const container = this.ensureContainer();
-    const toast = document.createElement("div");
-    toast.className = "toast toast-error";
     const message = error instanceof Error ? error.message : String(error);
-
-    toast.innerHTML = `
-      <div class="toast-body">
-        <div class="toast-header">
-          <span class="toast-title">Error</span>
-        </div>
-        <p class="toast-desc">${message}</p>
-      </div>
-      <button class="toast-close" aria-label="Close">&times;</button>
-    `;
-
-    const closeBtn = toast.querySelector(".toast-close");
-    closeBtn?.addEventListener("click", () => toast.remove());
-
-    container.appendChild(toast);
-    setTimeout(() => {
-      if (toast.parentElement) toast.remove();
-    }, 5000);
+    this.createSimpleToast("toast-error", "Error", message, 5000);
   }
 
   showSuccess(message: string, title = "Success"): void {
-    const container = this.ensureContainer();
-    const toast = document.createElement("div");
-    toast.className = "toast toast-success";
-
-    toast.innerHTML = `
-      <div class="toast-body">
-        <div class="toast-header">
-          <span class="toast-title">${title}</span>
-        </div>
-        <p class="toast-desc">${message}</p>
-      </div>
-      <button class="toast-close" aria-label="Close">&times;</button>
-    `;
-
-    const closeBtn = toast.querySelector(".toast-close");
-    closeBtn?.addEventListener("click", () => toast.remove());
-
-    container.appendChild(toast);
-    setTimeout(() => {
-      if (toast.parentElement) toast.remove();
-    }, 4000);
+    this.createSimpleToast("toast-success", title, message, 4000);
   }
 
   showInfo(message: string, title = "Info"): void {
+    this.createSimpleToast("toast-info", title, message, 4000);
+  }
+
+  private createSimpleToast(
+    typeClass: string,
+    titleText: string,
+    messageText: string,
+    durationMs: number,
+  ): void {
     const container = this.ensureContainer();
     const toast = document.createElement("div");
-    toast.className = "toast toast-info";
+    toast.className = `toast ${typeClass}`;
 
-    toast.innerHTML = `
-      <div class="toast-body">
-        <div class="toast-header">
-          <span class="toast-title">${title}</span>
-        </div>
-        <p class="toast-desc">${message}</p>
-      </div>
-      <button class="toast-close" aria-label="Close">&times;</button>
-    `;
+    const body = document.createElement("div");
+    body.className = "toast-body";
 
-    const closeBtn = toast.querySelector(".toast-close");
-    closeBtn?.addEventListener("click", () => toast.remove());
+    const header = document.createElement("div");
+    header.className = "toast-header";
+
+    const title = document.createElement("span");
+    title.className = "toast-title";
+    title.textContent = titleText;
+
+    header.appendChild(title);
+
+    const desc = document.createElement("p");
+    desc.className = "toast-desc";
+    desc.textContent = messageText;
+
+    body.appendChild(header);
+    body.appendChild(desc);
+
+    const closeBtn = document.createElement("button");
+    closeBtn.className = "toast-close";
+    closeBtn.setAttribute("aria-label", "Close");
+    closeBtn.textContent = "×";
+    closeBtn.addEventListener("click", () => toast.remove());
+
+    toast.appendChild(body);
+    toast.appendChild(closeBtn);
 
     container.appendChild(toast);
     setTimeout(() => {
       if (toast.parentElement) toast.remove();
-    }, 4000);
+    }, durationMs);
   }
 }
 

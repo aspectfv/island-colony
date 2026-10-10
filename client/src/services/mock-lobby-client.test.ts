@@ -131,10 +131,29 @@ describe("MockLobbyClient", () => {
   it("marks lobby ENDED with HOST_LEFT when host leaves", async () => {
     const client = new MockLobbyClient();
     const host = await client.createLobby({ displayName: "HostUser" });
-    await client.leaveLobby(host.lobby.lobbyCode, host.playerToken);
+    await client.leaveLobby(host.lobby.lobbyCode, host.playerId, host.playerToken);
 
     const lobby = await client.getLobby(host.lobby.lobbyCode);
     expect(lobby.status).toBe("ENDED");
     expect(lobby.endReason).toBe("HOST_LEFT");
+  });
+
+  it("removes player when peer leaves, and allows host to kick player", async () => {
+    const client = new MockLobbyClient();
+    const host = await client.createLobby({ displayName: "HostUser" });
+    const peer1 = await client.joinLobby(host.lobby.lobbyCode, { displayName: "Peer1" });
+    const peer2 = await client.joinLobby(host.lobby.lobbyCode, { displayName: "Peer2" });
+
+    // Peer1 self-leaves
+    await client.leaveLobby(host.lobby.lobbyCode, peer1.playerId, peer1.playerToken);
+    let lobby = await client.getLobby(host.lobby.lobbyCode);
+    expect(lobby.players.length).toBe(2);
+    expect(lobby.players.some((p) => p.playerId === peer1.playerId)).toBe(false);
+
+    // Host kicks peer2
+    await client.leaveLobby(host.lobby.lobbyCode, peer2.playerId, host.playerToken);
+    lobby = await client.getLobby(host.lobby.lobbyCode);
+    expect(lobby.players.length).toBe(1);
+    expect(lobby.players[0]?.playerId).toBe(host.playerId);
   });
 });

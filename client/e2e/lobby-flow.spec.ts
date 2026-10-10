@@ -16,14 +16,6 @@ test("full flow: left menu navigation -> create lobby -> lobby screen -> start s
   await expect(page.locator(".ui-title")).toHaveText("Island Colony");
   await expect(page.locator("#nav-create-btn")).toBeVisible();
   await expect(page.locator("#nav-join-btn")).toBeVisible();
-  await expect(page.locator("#nav-settings-btn")).toBeVisible();
-
-  // Test Settings Modal opens and closes properly
-  await page.click("#nav-settings-btn");
-  await expect(page.locator(".settings-modal-backdrop")).toBeVisible();
-  await expect(page.locator(".modal-title")).toHaveText("Settings");
-  await page.click("#settings-close-btn");
-  await expect(page.locator(".settings-modal-backdrop")).not.toBeVisible();
 
   // Click Create Lobby on the left menu to open the drawer
   await page.click("#nav-create-btn");

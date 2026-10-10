@@ -4,15 +4,31 @@ import { toast } from "./toast";
 export interface MainMenuCallbacks {
   onCreateLobby: (displayName: string) => Promise<void>;
   onJoinLobby: (lobbyCode: string, displayName: string) => Promise<void>;
-  onOpenSettings: () => void;
 }
 
 export type MenuMode = "idle" | "create" | "join";
+
+function getStoredName(): string {
+  try {
+    return localStorage.getItem("island_colony_display_name") || "";
+  } catch {
+    return "";
+  }
+}
+
+function setStoredName(name: string): void {
+  try {
+    localStorage.setItem("island_colony_display_name", name);
+  } catch {
+    // Ignore restricted storage contexts
+  }
+}
 
 export class MainMenu {
   private element: HTMLElement;
   private mode: MenuMode = "idle";
   private isSubmitting = false;
+  private currentName = getStoredName();
 
   constructor(private callbacks: MainMenuCallbacks) {
     this.element = document.createElement("div");
@@ -24,9 +40,14 @@ export class MainMenu {
     return this.element;
   }
 
-  private render(): void {
-    const savedName = localStorage.getItem("island_colony_display_name") || "";
+  private saveCurrentTypedName(): void {
+    const nameInput = this.element.querySelector<HTMLInputElement>("#player-name");
+    if (nameInput) {
+      this.currentName = nameInput.value;
+    }
+  }
 
+  private render(): void {
     this.element.innerHTML = `
       <div class="main-menu-container">
         <!-- Brand / Title Banner on Top Left -->
@@ -67,19 +88,6 @@ export class MainMenu {
                   <span class="nav-btn-desc">Connect with 6-letter lobby code</span>
                 </div>
               </button>
-
-              <button type="button" class="menu-nav-btn" id="nav-settings-btn">
-                <span class="nav-icon">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <circle cx="12" cy="12" r="3"></circle>
-                    <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
-                  </svg>
-                </span>
-                <div class="nav-btn-text">
-                  <span class="nav-btn-title">Settings</span>
-                  <span class="nav-btn-desc">Audio, graphics & controls</span>
-                </div>
-              </button>
             </div>
           </div>
 
@@ -101,7 +109,6 @@ export class MainMenu {
                   type="text" 
                   class="form-input" 
                   placeholder="e.g. Captain" 
-                  value="${savedName}"
                   maxlength="16"
                   required
                   autocomplete="nickname"
@@ -144,22 +151,29 @@ export class MainMenu {
       </div>
     `;
 
+    // Safely assign the value via property to avoid innerHTML injection and preserve typed input
+    const nameInput = this.element.querySelector<HTMLInputElement>("#player-name");
+    if (nameInput) {
+      nameInput.value = this.currentName;
+    }
+
     this.bindEvents();
   }
 
   private bindEvents(): void {
     const createBtn = this.element.querySelector<HTMLButtonElement>("#nav-create-btn");
     const joinBtn = this.element.querySelector<HTMLButtonElement>("#nav-join-btn");
-    const settingsBtn = this.element.querySelector<HTMLButtonElement>("#nav-settings-btn");
     const dismissBtn = this.element.querySelector<HTMLButtonElement>("#form-dismiss-btn");
 
     createBtn?.addEventListener("click", () => {
+      this.saveCurrentTypedName();
       this.mode = "create";
       this.render();
       this.focusInput("#player-name");
     });
 
     joinBtn?.addEventListener("click", () => {
+      this.saveCurrentTypedName();
       this.mode = "join";
       this.render();
       const codeInput = this.element.querySelector<HTMLInputElement>("#lobby-code");
@@ -171,11 +185,8 @@ export class MainMenu {
       }
     });
 
-    settingsBtn?.addEventListener("click", () => {
-      this.callbacks.onOpenSettings();
-    });
-
     dismissBtn?.addEventListener("click", () => {
+      this.saveCurrentTypedName();
       this.mode = "idle";
       this.render();
     });
@@ -200,7 +211,8 @@ export class MainMenu {
         return;
       }
 
-      localStorage.setItem("island_colony_display_name", name);
+      this.currentName = name;
+      setStoredName(name);
       this.setSubmitting(true);
 
       try {

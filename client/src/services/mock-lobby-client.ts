@@ -51,7 +51,7 @@ export class MockLobbyClient implements LobbyClient {
 
   private seedDefaultLobbies(): void {
     // Seed default waiting lobby from contracts/examples
-    const seededWaiting = JSON.parse(JSON.stringify(lobbyWaitingExample)) as Lobby;
+    const seededWaiting = structuredClone(lobbyWaitingExample) as Lobby;
     const tokens = new Map<string, string>();
     for (const player of seededWaiting.players) {
       tokens.set(player.playerId, `tok_${player.playerId.slice(0, 8)}`);
@@ -66,16 +66,40 @@ export class MockLobbyClient implements LobbyClient {
     });
   }
 
-  async getHealth(): Promise<Health> {
-    return {
-      status: "ok",
-      service: "lobby-service",
-      contractsVersion: (healthExample as Health).contractsVersion ?? "1.0.0",
-    };
+  private requireLobby(lobbyCode: string): StoredLobby {
+    const code = lobbyCode?.trim().toUpperCase();
+    const entry = this.lobbies.get(code);
+    if (!entry) {
+      throw new ProblemError(
+        createProblem(404, "LOBBY_NOT_FOUND", "Lobby not found", `Lobby ${code} was not found.`),
+      );
+    }
+    return entry;
   }
 
-  async createLobby(request: CreateLobbyRequest): Promise<LobbyMembership> {
-    const name = request.displayName?.trim();
+  private callerOf(entry: StoredLobby, token?: string): string {
+    if (!token) {
+      throw new ProblemError(
+        createProblem(401, "INVALID_PLAYER_TOKEN", "Invalid player token", "Token is missing."),
+      );
+    }
+    for (const [playerId, storedToken] of entry.tokens.entries()) {
+      if (storedToken === token) {
+        return playerId;
+      }
+    }
+    throw new ProblemError(
+      createProblem(
+        401,
+        "INVALID_PLAYER_TOKEN",
+        "Invalid player token",
+        "Player token does not belong to this lobby.",
+      ),
+    );
+  }
+
+  private validateName(displayName?: string): string {
+    const name = displayName?.trim();
     if (!name || name.length < 1 || name.length > 16) {
       throw new ProblemError(
         createProblem(
@@ -87,6 +111,19 @@ export class MockLobbyClient implements LobbyClient {
         ),
       );
     }
+    return name;
+  }
+
+  async getHealth(): Promise<Health> {
+    return {
+      status: "ok",
+      service: "lobby-service",
+      contractsVersion: (healthExample as Health).contractsVersion ?? "1.0.0",
+    };
+  }
+
+  async createLobby(request: CreateLobbyRequest): Promise<LobbyMembership> {
+    const name = this.validateName(request.displayName);
 
     const lobbyCode = generateCode();
     const playerId = generateId();
@@ -116,67 +153,23 @@ export class MockLobbyClient implements LobbyClient {
     this.lobbies.set(lobbyCode, { lobby, tokens });
 
     return {
-      lobby: JSON.parse(JSON.stringify(lobby)) as Lobby,
+      lobby: structuredClone(lobby),
       playerId,
       playerToken,
     };
   }
 
   async getLobby(lobbyCode: string, playerToken?: string): Promise<Lobby> {
-    const code = lobbyCode?.trim().toUpperCase();
-    const entry = this.lobbies.get(code);
-
-    if (!entry) {
-      throw new ProblemError(
-        createProblem(404, "LOBBY_NOT_FOUND", "Lobby not found", `Lobby ${code} was not found.`),
-      );
-    }
-
+    const entry = this.requireLobby(lobbyCode);
     if (playerToken) {
-      let authorized = false;
-      for (const token of entry.tokens.values()) {
-        if (token === playerToken) {
-          authorized = true;
-          break;
-        }
-      }
-      if (!authorized) {
-        throw new ProblemError(
-          createProblem(
-            401,
-            "INVALID_PLAYER_TOKEN",
-            "Invalid player token",
-            "Player token does not belong to this lobby.",
-          ),
-        );
-      }
+      this.callerOf(entry, playerToken);
     }
-
-    return JSON.parse(JSON.stringify(entry.lobby)) as Lobby;
+    return structuredClone(entry.lobby);
   }
 
   async joinLobby(lobbyCode: string, request: JoinLobbyRequest): Promise<LobbyMembership> {
-    const code = lobbyCode?.trim().toUpperCase();
-    const name = request.displayName?.trim();
-
-    if (!name || name.length < 1 || name.length > 16) {
-      throw new ProblemError(
-        createProblem(
-          400,
-          "VALIDATION_FAILED",
-          "Validation failed",
-          "Display name must be between 1 and 16 characters.",
-          [{ field: "displayName", message: "Must be between 1 and 16 characters." }],
-        ),
-      );
-    }
-
-    const entry = this.lobbies.get(code);
-    if (!entry) {
-      throw new ProblemError(
-        createProblem(404, "LOBBY_NOT_FOUND", "Lobby not found", `Lobby ${code} was not found.`),
-      );
-    }
+    const name = this.validateName(request.displayName);
+    const entry = this.requireLobby(lobbyCode);
 
     if (entry.lobby.status !== "WAITING") {
       throw new ProblemError(
@@ -195,7 +188,7 @@ export class MockLobbyClient implements LobbyClient {
           409,
           "LOBBY_FULL",
           "Lobby is full",
-          `Lobby ${code} already has ${entry.lobby.maxPlayers} players.`,
+          `Lobby ${entry.lobby.lobbyCode} already has ${entry.lobby.maxPlayers} players.`,
         ),
       );
     }
@@ -234,53 +227,32 @@ export class MockLobbyClient implements LobbyClient {
     entry.tokens.set(playerId, playerToken);
 
     return {
-      lobby: JSON.parse(JSON.stringify(entry.lobby)) as Lobby,
+      lobby: structuredClone(entry.lobby),
       playerId,
       playerToken,
     };
   }
 
-  async leaveLobby(lobbyCode: string, playerToken: string, targetPlayerId?: string): Promise<void> {
-    const code = lobbyCode?.trim().toUpperCase();
-    const entry = this.lobbies.get(code);
-    if (!entry) {
-      throw new ProblemError(
-        createProblem(404, "LOBBY_NOT_FOUND", "Lobby not found", `Lobby ${code} was not found.`),
-      );
-    }
+  async leaveLobby(lobbyCode: string, playerId: string, playerToken: string): Promise<void> {
+    const entry = this.requireLobby(lobbyCode);
+    const callerPlayerId = this.callerOf(entry, playerToken);
 
-    let callerPlayerId: string | null = null;
-    for (const [pId, token] of entry.tokens.entries()) {
-      if (token === playerToken) {
-        callerPlayerId = pId;
-        break;
-      }
-    }
-
-    if (!callerPlayerId) {
-      throw new ProblemError(
-        createProblem(401, "INVALID_PLAYER_TOKEN", "Invalid token", "Token is not valid."),
-      );
-    }
-
-    const toRemoveId = targetPlayerId ?? callerPlayerId;
     const isHost = callerPlayerId === entry.lobby.hostPlayerId;
-
-    if (toRemoveId !== callerPlayerId && !isHost) {
+    if (playerId !== callerPlayerId && !isHost) {
       throw new ProblemError(
         createProblem(403, "FORBIDDEN", "Forbidden", "Only the host can remove another player."),
       );
     }
 
-    if (toRemoveId === entry.lobby.hostPlayerId) {
+    if (playerId === entry.lobby.hostPlayerId) {
       entry.lobby.status = "ENDED";
       entry.lobby.endReason = "HOST_LEFT";
-      entry.tokens.delete(toRemoveId);
+      entry.tokens.delete(playerId);
       return;
     }
 
-    entry.lobby.players = entry.lobby.players.filter((p) => p.playerId !== toRemoveId);
-    entry.tokens.delete(toRemoveId);
+    entry.lobby.players = entry.lobby.players.filter((p) => p.playerId !== playerId);
+    entry.tokens.delete(playerId);
   }
 
   async startSession(
@@ -288,13 +260,8 @@ export class MockLobbyClient implements LobbyClient {
     playerToken: string,
     request: StartSessionRequest,
   ): Promise<SessionDetails> {
-    const code = lobbyCode?.trim().toUpperCase();
-    const entry = this.lobbies.get(code);
-    if (!entry) {
-      throw new ProblemError(
-        createProblem(404, "LOBBY_NOT_FOUND", "Lobby not found", `Lobby ${code} was not found.`),
-      );
-    }
+    const entry = this.requireLobby(lobbyCode);
+    const callerPlayerId = this.callerOf(entry, playerToken);
 
     if (entry.lobby.status !== "WAITING") {
       throw new ProblemError(
@@ -305,14 +272,6 @@ export class MockLobbyClient implements LobbyClient {
           "Lobby cannot be started because it is not WAITING.",
         ),
       );
-    }
-
-    let callerPlayerId: string | null = null;
-    for (const [pId, token] of entry.tokens.entries()) {
-      if (token === playerToken) {
-        callerPlayerId = pId;
-        break;
-      }
     }
 
     if (callerPlayerId !== entry.lobby.hostPlayerId) {
@@ -342,8 +301,7 @@ export class MockLobbyClient implements LobbyClient {
 
     const sessionId = generateId();
     const now = new Date().toISOString();
-
-    const detailsExample = JSON.parse(JSON.stringify(sessionDetailsExample)) as SessionDetails;
+    const detailsExample = sessionDetailsExample as SessionDetails;
 
     entry.lobby.status = "IN_PROGRESS";
     entry.lobby.session = {
@@ -355,24 +313,18 @@ export class MockLobbyClient implements LobbyClient {
     const sessionDetails: SessionDetails = {
       ...detailsExample,
       sessionId,
-      lobbyCode: code,
+      lobbyCode: entry.lobby.lobbyCode,
       hostPlayerId: entry.lobby.hostPlayerId,
       startedAt: now,
-      players: JSON.parse(JSON.stringify(entry.lobby.players)) as LobbyPlayer[],
+      players: structuredClone(entry.lobby.players),
     };
 
     entry.sessionDetails = sessionDetails;
-    return JSON.parse(JSON.stringify(sessionDetails)) as SessionDetails;
+    return structuredClone(sessionDetails);
   }
 
   async getSession(lobbyCode: string): Promise<SessionDetails> {
-    const code = lobbyCode?.trim().toUpperCase();
-    const entry = this.lobbies.get(code);
-    if (!entry) {
-      throw new ProblemError(
-        createProblem(404, "LOBBY_NOT_FOUND", "Lobby not found", `Lobby ${code} was not found.`),
-      );
-    }
+    const entry = this.requireLobby(lobbyCode);
 
     if (!entry.sessionDetails) {
       throw new ProblemError(
@@ -385,7 +337,7 @@ export class MockLobbyClient implements LobbyClient {
       );
     }
 
-    return JSON.parse(JSON.stringify(entry.sessionDetails)) as SessionDetails;
+    return structuredClone(entry.sessionDetails);
   }
 
   async endSession(
@@ -393,21 +345,8 @@ export class MockLobbyClient implements LobbyClient {
     playerToken: string,
     request: EndSessionRequest,
   ): Promise<Lobby> {
-    const code = lobbyCode?.trim().toUpperCase();
-    const entry = this.lobbies.get(code);
-    if (!entry) {
-      throw new ProblemError(
-        createProblem(404, "LOBBY_NOT_FOUND", "Lobby not found", `Lobby ${code} was not found.`),
-      );
-    }
-
-    let callerPlayerId: string | null = null;
-    for (const [pId, token] of entry.tokens.entries()) {
-      if (token === playerToken) {
-        callerPlayerId = pId;
-        break;
-      }
-    }
+    const entry = this.requireLobby(lobbyCode);
+    const callerPlayerId = this.callerOf(entry, playerToken);
 
     if (callerPlayerId !== entry.lobby.hostPlayerId) {
       throw new ProblemError(
@@ -418,6 +357,6 @@ export class MockLobbyClient implements LobbyClient {
     entry.lobby.status = "ENDED";
     entry.lobby.endReason = request.reason;
 
-    return JSON.parse(JSON.stringify(entry.lobby)) as Lobby;
+    return structuredClone(entry.lobby);
   }
 }

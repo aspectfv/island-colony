@@ -1,9 +1,10 @@
 import { GameView } from "./game-view";
 import { PlayerInput } from "./player/input";
-import { getServices } from "./services";
+import { getServices } from "./services/service-factory";
 import type { WorldConfig } from "./shared/contracts/world";
 import { fixtureWorld } from "./shared/fixture-world";
-import { UIManager, type ScreenState } from "./ui";
+import { toast } from "./ui/toast";
+import { UIManager, type ScreenState } from "./ui/ui-manager";
 import { CloudLayer } from "./world/clouds";
 import { createWorldView, fitToWindow, startRenderLoop } from "./world/view";
 
@@ -29,8 +30,8 @@ const SCENIC_ROTATION_SPEED = 0.055; // Gentle, smooth rotation (radians/sec)
 input.enabled = false;
 
 async function startSessionGame(world: WorldConfig, slot: number): Promise<void> {
-  currentScreenState = "GAME";
   const active = game.enter(world, slot);
+  currentScreenState = "GAME";
   input.enabled = true;
 
   if (import.meta.env.DEV && params.has("demo")) {
@@ -61,9 +62,12 @@ async function init(): Promise<void> {
     const services = getServices();
     new UIManager(
       services,
-      (payload) => {
-        const world = (payload.sessionDetails?.worldConfig as WorldConfig) || initialWorld;
-        void startSessionGame(world, payload.slot);
+      async (payload) => {
+        if (!payload.sessionDetails?.worldConfig) {
+          toast.showError("Failed to retrieve world configuration for session.");
+          return;
+        }
+        await startSessionGame(payload.sessionDetails.worldConfig as WorldConfig, payload.slot);
       },
       (screen) => {
         currentScreenState = screen;

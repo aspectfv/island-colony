@@ -2,11 +2,10 @@ import type { Lobby, LobbyMembership, SessionDetails } from "../shared/contracts
 import type { Services } from "../services/service-factory";
 import { MainMenu } from "./main-menu";
 import { LobbyScreen } from "./lobby-screen";
-import { SettingsModal } from "./settings-modal";
 import "./styles.css";
 
 export interface GameStartPayload {
-  sessionDetails?: SessionDetails;
+  sessionDetails: SessionDetails;
   slot: number;
   playerId: string;
 }
@@ -17,12 +16,11 @@ export class UIManager {
   private rootElement: HTMLElement;
   private currentScreen: ScreenState = "MENU";
   private activeLobbyScreen: LobbyScreen | null = null;
-  private activeSettingsModal: SettingsModal | null = null;
   private currentMembership: LobbyMembership | null = null;
 
   constructor(
     private services: Services,
-    private onStartGameCallback: (payload: GameStartPayload) => void,
+    private onStartGameCallback: (payload: GameStartPayload) => void | Promise<void>,
     private onScreenChange?: (screen: ScreenState) => void,
   ) {
     let root = document.getElementById("ui-root");
@@ -56,24 +54,10 @@ export class UIManager {
         this.currentMembership = membership;
         this.showLobby(membership.lobby, membership.playerId, membership.playerToken);
       },
-      onOpenSettings: () => {
-        this.showSettings();
-      },
     });
 
     this.rootElement.innerHTML = "";
     this.rootElement.appendChild(mainMenu.getElement());
-  }
-
-  showSettings(): void {
-    if (this.activeSettingsModal) return;
-    this.activeSettingsModal = new SettingsModal(() => {
-      if (this.activeSettingsModal) {
-        this.activeSettingsModal.getElement().remove();
-        this.activeSettingsModal = null;
-      }
-    });
-    this.rootElement.appendChild(this.activeSettingsModal.getElement());
   }
 
   showLobby(lobby: Lobby, playerId: string, playerToken: string): void {
@@ -89,8 +73,8 @@ export class UIManager {
       onLeave: () => {
         this.showMainMenu();
       },
-      onSessionStarted: async (sessionDetails?: unknown) => {
-        await this.handleSessionStarted(sessionDetails as SessionDetails | undefined);
+      onSessionStarted: async (sessionDetails: SessionDetails) => {
+        await this.handleSessionStarted(sessionDetails);
       },
     });
 
@@ -98,10 +82,8 @@ export class UIManager {
     this.rootElement.appendChild(this.activeLobbyScreen.getElement());
   }
 
-  private async handleSessionStarted(sessionDetails?: SessionDetails): Promise<void> {
+  private async handleSessionStarted(sessionDetails: SessionDetails): Promise<void> {
     this.cleanupActiveScreen();
-    this.currentScreen = "GAME";
-    this.onScreenChange?.(this.currentScreen);
     this.rootElement.innerHTML = "";
 
     const membership = this.currentMembership;
@@ -109,7 +91,7 @@ export class UIManager {
     const slot = membership?.lobby.players.find((p) => p.playerId === playerId)?.slot ?? 0;
 
     // Record session in metadata service if caller is host
-    if (sessionDetails && membership && membership.lobby.hostPlayerId === playerId) {
+    if (membership && membership.lobby.hostPlayerId === playerId) {
       try {
         await this.services.metadata.createSessionRecord({
           sessionId: sessionDetails.sessionId,
@@ -128,18 +110,18 @@ export class UIManager {
       }
     }
 
-    this.onStartGameCallback({
+    // Call start game callback to load real world and avatar before transitioning screen state to GAME
+    await this.onStartGameCallback({
       sessionDetails,
       slot,
       playerId,
     });
+
+    this.currentScreen = "GAME";
+    this.onScreenChange?.(this.currentScreen);
   }
 
   private cleanupActiveScreen(): void {
-    if (this.activeSettingsModal) {
-      this.activeSettingsModal.getElement().remove();
-      this.activeSettingsModal = null;
-    }
     if (this.activeLobbyScreen) {
       this.activeLobbyScreen.destroy();
       this.activeLobbyScreen = null;
