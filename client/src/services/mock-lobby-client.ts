@@ -244,6 +244,18 @@ export class MockLobbyClient implements LobbyClient {
       );
     }
 
+    const playerExists = entry.lobby.players.some((p) => p.playerId === playerId);
+    if (!playerExists) {
+      throw new ProblemError(
+        createProblem(
+          404,
+          "PLAYER_NOT_FOUND",
+          "Player not found",
+          `Player ${playerId} is not in this lobby.`,
+        ),
+      );
+    }
+
     if (playerId === entry.lobby.hostPlayerId) {
       entry.lobby.status = "ENDED";
       entry.lobby.endReason = "HOST_LEFT";
@@ -351,6 +363,17 @@ export class MockLobbyClient implements LobbyClient {
     if (callerPlayerId !== entry.lobby.hostPlayerId) {
       throw new ProblemError(
         createProblem(403, "NOT_HOST", "Not host", "Only the host can end the session."),
+      );
+    }
+
+    if (entry.lobby.status !== "IN_PROGRESS") {
+      throw new ProblemError(
+        createProblem(
+          409,
+          "SESSION_NOT_IN_PROGRESS",
+          "Session not in progress",
+          "Cannot end a session that is not in progress.",
+        ),
       );
     }
 

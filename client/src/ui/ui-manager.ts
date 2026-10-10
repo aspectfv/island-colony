@@ -117,8 +117,10 @@ export class UIManager {
       playerId,
     });
 
-    this.currentScreen = "GAME";
-    this.onScreenChange?.(this.currentScreen);
+    if (this.currentScreen !== "MENU") {
+      this.currentScreen = "GAME";
+      this.onScreenChange?.(this.currentScreen);
+    }
   }
 
   private cleanupActiveScreen(): void {

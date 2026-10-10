@@ -156,4 +156,50 @@ describe("MockLobbyClient", () => {
     expect(lobby.players.length).toBe(1);
     expect(lobby.players[0]?.playerId).toBe(host.playerId);
   });
+
+  it("rejects leaveLobby with PLAYER_NOT_FOUND when player is not in lobby", async () => {
+    const client = new MockLobbyClient();
+    const host = await client.createLobby({ displayName: "HostUser" });
+
+    try {
+      await client.leaveLobby(host.lobby.lobbyCode, "non-existent-player", host.playerToken);
+      expect.unreachable();
+    } catch (err) {
+      expect(err).toBeInstanceOf(ProblemError);
+      expect((err as ProblemError).code).toBe("PLAYER_NOT_FOUND");
+    }
+  });
+
+  it("rejects endSession with SESSION_NOT_IN_PROGRESS when lobby is not IN_PROGRESS", async () => {
+    const client = new MockLobbyClient();
+    const host = await client.createLobby({ displayName: "HostUser" });
+
+    // Lobby is WAITING
+    try {
+      await client.endSession(host.lobby.lobbyCode, host.playerToken, { reason: "COMPLETED" });
+      expect.unreachable();
+    } catch (err) {
+      expect(err).toBeInstanceOf(ProblemError);
+      expect((err as ProblemError).code).toBe("SESSION_NOT_IN_PROGRESS");
+    }
+
+    // Start session to make it IN_PROGRESS, then end it
+    await client.startSession(host.lobby.lobbyCode, host.playerToken, {
+      expectedPlayerIds: [host.playerId],
+    });
+    const ended = await client.endSession(host.lobby.lobbyCode, host.playerToken, {
+      reason: "COMPLETED",
+    });
+    expect(ended.status).toBe("ENDED");
+    expect(ended.endReason).toBe("COMPLETED");
+
+    // Ending already ENDED session fails with SESSION_NOT_IN_PROGRESS
+    try {
+      await client.endSession(host.lobby.lobbyCode, host.playerToken, { reason: "COMPLETED" });
+      expect.unreachable();
+    } catch (err) {
+      expect(err).toBeInstanceOf(ProblemError);
+      expect((err as ProblemError).code).toBe("SESSION_NOT_IN_PROGRESS");
+    }
+  });
 });

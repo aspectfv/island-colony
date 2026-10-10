@@ -60,11 +60,13 @@ async function init(): Promise<void> {
     void startSessionGame(initialWorld, 0);
   } else {
     const services = getServices();
-    new UIManager(
+    let uiManager: UIManager | null = null;
+    uiManager = new UIManager(
       services,
       async (payload) => {
         if (!payload.sessionDetails?.worldConfig) {
           toast.showError("Failed to retrieve world configuration for session.");
+          uiManager?.showMainMenu();
           return;
         }
         await startSessionGame(payload.sessionDetails.worldConfig as WorldConfig, payload.slot);
