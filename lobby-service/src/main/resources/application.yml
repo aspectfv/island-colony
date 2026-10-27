@@ -1,0 +1,16 @@
+server:
+  port: 8081
+
+contracts:
+  version: 1.0.1
+
+world-service:
+  url: ${WORLD_SERVICE_URL:http://localhost:8083}
+
+cors:
+  allowed-origins: ${ALLOWED_ORIGINS:http://localhost:5173}
+
+logging:
+  level:
+    org.springframework.web: DEBUG
+    org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerMapping: TRACE
