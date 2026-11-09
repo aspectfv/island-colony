@@ -15,7 +15,6 @@ public record Participant
     [JsonPropertyName("displayName")]
     public required string DisplayName { get; init; }
 
-    [Required]
     [Range(0, 15, ErrorMessage = "slot must be between 0 and 15.")]
     [JsonPropertyName("slot")]
     public required int Slot { get; init; }

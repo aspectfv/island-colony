@@ -1,9 +1,26 @@
 using MetadataService.Models;
-using MetadataService.Results;
+using MetadataService.Serialization;
 using MetadataService.Storage;
 using Microsoft.AspNetCore.Mvc;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// Health / Contracts version
+builder.Services.AddSingleton(sp =>
+{
+    var configuration = sp.GetRequiredService<IConfiguration>();
+    var configuredContractsVersion = configuration["CONTRACTS_VERSION"];
+    var contractsVersion = string.IsNullOrWhiteSpace(configuredContractsVersion)
+        ? Program.DefaultContractsVersion
+        : configuredContractsVersion.Trim();
+
+    return new HealthResponse
+    {
+        Status = "ok",
+        Service = "metadata-service",
+        ContractsVersion = contractsVersion
+    };
+});
 
 // Storage
 builder.Services.AddSingleton<ISessionRepository, InMemorySessionRepository>();
@@ -26,8 +43,28 @@ builder.Services.AddCors(options =>
     });
 });
 
-// Controllers & Validation error mapping
+// Framework ProblemDetails customization (415, 404, 405, etc.)
+builder.Services.AddProblemDetails(options =>
+{
+    options.CustomizeProblemDetails = context =>
+    {
+        var status = context.ProblemDetails.Status ?? context.HttpContext.Response.StatusCode;
+        context.ProblemDetails.Status = status;
+        context.ProblemDetails.Type = "about:blank";
+        context.ProblemDetails.Extensions.Remove("traceId");
+        if (!context.ProblemDetails.Extensions.ContainsKey("code"))
+        {
+            context.ProblemDetails.Extensions["code"] = ApiProblemDetails.CodeForStatus(status);
+        }
+    };
+});
+
+// Controllers, JSON serialization & Validation error mapping
 builder.Services.AddControllers()
+    .AddJsonOptions(options =>
+    {
+        options.JsonSerializerOptions.Converters.Add(new UtcDateTimeOffsetJsonConverter());
+    })
     .ConfigureApiBehaviorOptions(options =>
     {
         options.InvalidModelStateResponseFactory = context =>
@@ -35,18 +72,32 @@ builder.Services.AddControllers()
             var errors = new List<ValidationError>();
             foreach (var (key, state) in context.ModelState)
             {
+                if (string.Equals(key, "request", StringComparison.OrdinalIgnoreCase))
+                {
+                    continue;
+                }
+
+                bool isJsonPathKey = key == "$" || key.StartsWith("$.", StringComparison.Ordinal);
+
                 foreach (var error in state.Errors)
                 {
-                    var fieldName = ToCamelCaseField(key);
-                    var message = string.IsNullOrWhiteSpace(error.ErrorMessage)
-                        ? "Invalid field value."
-                        : error.ErrorMessage;
+                    var fieldName = NormalizeFieldName(key);
+                    bool isJsonError = isJsonPathKey || error.Exception is not null;
+                    var message = isJsonError
+                        ? "Invalid JSON value."
+                        : string.IsNullOrWhiteSpace(error.ErrorMessage)
+                            ? "Invalid field value."
+                            : error.ErrorMessage;
                     errors.Add(new ValidationError(fieldName, message));
                 }
             }
 
-            var problem = ApiProblemDetails.ValidationFailed(errors);
-            return new ProblemDetailsResult(problem);
+            if (errors.Count == 0)
+            {
+                errors.Add(new ValidationError("$", "Invalid JSON value."));
+            }
+
+            return ApiProblemDetails.ValidationFailed(errors).ToActionResult();
         };
     });
 
@@ -63,14 +114,24 @@ app.UseExceptionHandler(exceptionApp =>
     });
 });
 
+app.UseStatusCodePages();
 app.UseCors();
 app.MapControllers();
 
 app.Run();
 
-static string ToCamelCaseField(string field)
+static string NormalizeFieldName(string field)
 {
-    if (string.IsNullOrWhiteSpace(field)) return "$";
+    if (string.IsNullOrWhiteSpace(field) || field == "$")
+    {
+        return "$";
+    }
+
+    if (field.StartsWith("$.", StringComparison.Ordinal))
+    {
+        field = field[2..];
+    }
+
     var segments = field.Split('.');
     for (int i = 0; i < segments.Length; i++)
     {
@@ -83,4 +144,7 @@ static string ToCamelCaseField(string field)
     return string.Join('.', segments);
 }
 
-public partial class Program { }
+public partial class Program
+{
+    public const string DefaultContractsVersion = "1.0.1";
+}

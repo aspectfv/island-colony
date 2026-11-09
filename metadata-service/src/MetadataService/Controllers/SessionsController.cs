@@ -1,5 +1,4 @@
 using MetadataService.Models;
-using MetadataService.Results;
 using MetadataService.Storage;
 using Microsoft.AspNetCore.Mvc;
 
@@ -18,7 +17,6 @@ public class SessionsController : ControllerBase
 
     [HttpPost]
     [Consumes("application/json")]
-    [Produces("application/json", "application/problem+json")]
     [ProducesResponseType(typeof(SessionRecord), StatusCodes.Status201Created)]
     [ProducesResponseType(typeof(ApiProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ApiProblemDetails), StatusCodes.Status409Conflict)]
@@ -38,14 +36,13 @@ public class SessionsController : ControllerBase
 
         if (!_sessionRepository.TryCreateSession(record))
         {
-            return new ProblemDetailsResult(ApiProblemDetails.SessionExists(request.SessionId));
+            return ApiProblemDetails.SessionExists(request.SessionId).ToActionResult();
         }
 
         return CreatedAtAction(nameof(GetSessionRecord), new { sessionId = record.SessionId }, record);
     }
 
     [HttpGet("{sessionId}")]
-    [Produces("application/json", "application/problem+json")]
     [ProducesResponseType(typeof(SessionRecord), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiProblemDetails), StatusCodes.Status404NotFound)]
     public IActionResult GetSessionRecord([FromRoute] string sessionId)
@@ -53,7 +50,7 @@ public class SessionsController : ControllerBase
         var record = _sessionRepository.GetSession(sessionId);
         if (record == null)
         {
-            return new ProblemDetailsResult(ApiProblemDetails.SessionNotFound(sessionId));
+            return ApiProblemDetails.SessionNotFound(sessionId).ToActionResult();
         }
 
         return Ok(record);

@@ -1,4 +1,4 @@
-# Metadata Service
+# Metadata service
 
 ASP.NET Core (.NET 10) microservice storing session metadata, participant records, and game outcomes.
 
@@ -9,12 +9,12 @@ ASP.NET Core (.NET 10) microservice storing session metadata, participant record
 
 ## Endpoints
 
-### Stage 1 (Issue #11)
+### Stage 1 (issue #11)
 - `GET /health` - Service health check and implemented contracts version.
 - `POST /api/v1/sessions` - Creates an active session record and participant roster. Returns 201 Created with `SessionRecord`, 400 `VALIDATION_FAILED`, or 409 `SESSION_EXISTS`.
 - `GET /api/v1/sessions/{sessionId}` - Retrieves a session record by its UUID. Returns 200 OK or 404 `SESSION_NOT_FOUND`.
 
-### Stage 2 (Future)
+### Stage 2 (future)
 - `POST /api/v1/sessions/{sessionId}/summary` - Records how the session ended.
 - `GET /api/v1/sessions` - Lists recent sessions, newest first.
 
@@ -24,7 +24,7 @@ ASP.NET Core (.NET 10) microservice storing session metadata, participant record
 
 ## Development
 
-### Run the Service Locally
+### Run the service locally
 
 From the `metadata-service/` directory:
 
@@ -34,7 +34,7 @@ dotnet run --project src/MetadataService
 
 The service will start listening on `http://localhost:8084`.
 
-### Run Tests
+### Run tests
 
 Run the full xUnit test suite (including WebApplicationFactory HTTP integration tests):
 
@@ -42,7 +42,7 @@ Run the full xUnit test suite (including WebApplicationFactory HTTP integration 
 dotnet test
 ```
 
-### Verify & Format Code
+### Verify and format code
 
 Verify formatting matches repository standards:
 
@@ -63,4 +63,4 @@ The service can be configured via `appsettings.json` or environment variables:
 | Setting / Variable | Default | Description |
 |---|---|---|
 | `ALLOWED_ORIGINS` | `http://localhost:5173` | Comma-separated CORS allowed origins |
-| `CONTRACTS_VERSION` | Value from `contracts/VERSION` or `1.0.1` | Implemented contracts version |
+| `CONTRACTS_VERSION` | `1.0.1` | Implemented contracts version |

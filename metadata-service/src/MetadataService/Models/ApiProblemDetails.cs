@@ -17,6 +17,29 @@ public class ApiProblemDetails : ProblemDetails
         Type = "about:blank";
     }
 
+    public ObjectResult ToActionResult()
+    {
+        return new ObjectResult(this)
+        {
+            StatusCode = Status,
+            ContentTypes = { "application/problem+json" }
+        };
+    }
+
+    public static string CodeForStatus(int statusCode)
+    {
+        return statusCode switch
+        {
+            StatusCodes.Status400BadRequest => "VALIDATION_FAILED",
+            StatusCodes.Status404NotFound => "NOT_FOUND",
+            StatusCodes.Status405MethodNotAllowed => "METHOD_NOT_ALLOWED",
+            StatusCodes.Status406NotAcceptable => "NOT_ACCEPTABLE",
+            StatusCodes.Status415UnsupportedMediaType => "UNSUPPORTED_MEDIA_TYPE",
+            >= 500 => "INTERNAL_ERROR",
+            _ => "REQUEST_FAILED"
+        };
+    }
+
     public static ApiProblemDetails ValidationFailed(List<ValidationError> errors, string? detail = null)
     {
         return new ApiProblemDetails

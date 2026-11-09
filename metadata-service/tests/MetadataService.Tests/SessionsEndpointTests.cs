@@ -1,5 +1,6 @@
 using System.Net;
 using System.Net.Http.Json;
+using System.Text;
 using System.Text.Json;
 using MetadataService.Models;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -23,13 +24,16 @@ public class SessionsEndpointTests : IClassFixture<WebApplicationFactory<Program
         var hostPlayerId = Guid.NewGuid().ToString().ToLowerInvariant();
         var peerPlayerId = Guid.NewGuid().ToString().ToLowerInvariant();
 
+        // Send a +02:00 offset timestamp to verify normalization to UTC and serialization with "Z"
+        var startedAtWithOffset = new DateTimeOffset(2026, 10, 13, 14, 0, 0, TimeSpan.FromHours(2));
+
         var request = new CreateSessionRecordRequest
         {
             SessionId = sessionId,
             LobbyCode = "ABCDEF",
             HostPlayerId = hostPlayerId,
             WorldSeed = 1234567,
-            StartedAt = DateTimeOffset.UtcNow,
+            StartedAt = startedAtWithOffset,
             Participants =
             [
                 new Participant { PlayerId = hostPlayerId, DisplayName = "HostPlayer", Slot = 0 },
@@ -43,12 +47,18 @@ public class SessionsEndpointTests : IClassFixture<WebApplicationFactory<Program
         Assert.NotNull(response.Headers.Location);
         Assert.Contains($"/api/v1/sessions/{sessionId}", response.Headers.Location.ToString());
 
-        var record = await response.Content.ReadFromJsonAsync<SessionRecord>();
+        var rawJson = await response.Content.ReadAsStringAsync();
+        using var jsonDoc = JsonDocument.Parse(rawJson);
+        Assert.Equal("2026-10-13T12:00:00Z", jsonDoc.RootElement.GetProperty("startedAt").GetString());
+
+        var record = JsonSerializer.Deserialize<SessionRecord>(rawJson);
         Assert.NotNull(record);
         Assert.Equal(sessionId, record.SessionId);
         Assert.Equal("ABCDEF", record.LobbyCode);
         Assert.Equal(hostPlayerId, record.HostPlayerId);
         Assert.Equal(1234567, record.WorldSeed);
+        Assert.Equal(TimeSpan.Zero, record.StartedAt.Offset);
+        Assert.Equal(new DateTimeOffset(2026, 10, 13, 12, 0, 0, TimeSpan.Zero), record.StartedAt);
         Assert.Equal(SessionRecordStatus.Active, record.Status);
         Assert.Null(record.Summary);
         Assert.Null(record.DurationSeconds);
@@ -58,7 +68,11 @@ public class SessionsEndpointTests : IClassFixture<WebApplicationFactory<Program
         var getResponse = await _client.GetAsync($"/api/v1/sessions/{sessionId}");
         Assert.Equal(HttpStatusCode.OK, getResponse.StatusCode);
 
-        var fetchedRecord = await getResponse.Content.ReadFromJsonAsync<SessionRecord>();
+        var getRawJson = await getResponse.Content.ReadAsStringAsync();
+        using var getJsonDoc = JsonDocument.Parse(getRawJson);
+        Assert.Equal("2026-10-13T12:00:00Z", getJsonDoc.RootElement.GetProperty("startedAt").GetString());
+
+        var fetchedRecord = JsonSerializer.Deserialize<SessionRecord>(getRawJson);
         Assert.NotNull(fetchedRecord);
         Assert.Equal(sessionId, fetchedRecord.SessionId);
         Assert.Equal(SessionRecordStatus.Active, fetchedRecord.Status);
@@ -98,20 +112,19 @@ public class SessionsEndpointTests : IClassFixture<WebApplicationFactory<Program
     }
 
     [Fact]
-    public async Task CreateSession_InvalidModel_Returns400BadRequest_WithValidationFailedProblem()
+    public async Task CreateSession_InvalidJson_Returns400BadRequest_WithCleanFieldAndFixedMessage()
     {
-        // Invalid seed (< 0), invalid lobbyCode (has invalid characters), empty participants
-        var invalidPayload = new
+        var invalidJsonPayload = new
         {
-            sessionId = "not-a-uuid",
-            lobbyCode = "1234",
-            hostPlayerId = "not-a-uuid",
-            worldSeed = -1,
+            sessionId = Guid.NewGuid().ToString().ToLowerInvariant(),
+            lobbyCode = "ABCDEF",
+            hostPlayerId = Guid.NewGuid().ToString().ToLowerInvariant(),
+            worldSeed = 42,
             startedAt = "invalid-date",
             participants = Array.Empty<object>()
         };
 
-        var response = await _client.PostAsJsonAsync("/api/v1/sessions", invalidPayload);
+        var response = await _client.PostAsJsonAsync("/api/v1/sessions", invalidJsonPayload);
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
         Assert.NotNull(response.Content.Headers.ContentType);
@@ -122,7 +135,74 @@ public class SessionsEndpointTests : IClassFixture<WebApplicationFactory<Program
         Assert.Equal("VALIDATION_FAILED", problem.Code);
         Assert.Equal(400, problem.Status);
         Assert.NotNull(problem.Errors);
-        Assert.NotEmpty(problem.Errors);
+        Assert.DoesNotContain(problem.Errors, e => e.Field == "request");
+        var startedAtError = Assert.Single(problem.Errors, e => e.Field == "startedAt");
+        Assert.Equal("Invalid JSON value.", startedAtError.Message);
+    }
+
+    [Fact]
+    public async Task CreateSession_InvalidAttributes_Returns400BadRequest_WithValidationFailedProblem()
+    {
+        var invalidAttributesPayload = new
+        {
+            sessionId = "not-a-uuid",
+            lobbyCode = "1234",
+            hostPlayerId = "not-a-uuid",
+            worldSeed = -1,
+            startedAt = "2026-10-13T12:00:00Z",
+            participants = Array.Empty<object>()
+        };
+
+        var response = await _client.PostAsJsonAsync("/api/v1/sessions", invalidAttributesPayload);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.NotNull(response.Content.Headers.ContentType);
+        Assert.Equal("application/problem+json", response.Content.Headers.ContentType.MediaType);
+
+        var problem = await response.Content.ReadFromJsonAsync<ApiProblemDetails>();
+        Assert.NotNull(problem);
+        Assert.Equal("VALIDATION_FAILED", problem.Code);
+        Assert.Equal(400, problem.Status);
+        Assert.NotNull(problem.Errors);
+        Assert.Contains(problem.Errors, e => e.Field == "sessionId");
+        Assert.Contains(problem.Errors, e => e.Field == "lobbyCode");
+        Assert.Contains(problem.Errors, e => e.Field == "hostPlayerId");
+        Assert.Contains(problem.Errors, e => e.Field == "worldSeed");
+        Assert.Contains(problem.Errors, e => e.Field == "participants");
+    }
+
+    [Fact]
+    public async Task CreateSession_NullParticipantEntry_Returns400BadRequest_WithParticipantIndexField()
+    {
+        var sessionId = Guid.NewGuid().ToString().ToLowerInvariant();
+        var hostPlayerId = Guid.NewGuid().ToString().ToLowerInvariant();
+
+        var payloadWithNullParticipant = new
+        {
+            sessionId,
+            lobbyCode = "ABCDEF",
+            hostPlayerId,
+            worldSeed = 42,
+            startedAt = "2026-10-13T12:00:00Z",
+            participants = new object?[]
+            {
+                new { playerId = hostPlayerId, displayName = "HostPlayer", slot = 0 },
+                null
+            }
+        };
+
+        var response = await _client.PostAsJsonAsync("/api/v1/sessions", payloadWithNullParticipant);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.NotNull(response.Content.Headers.ContentType);
+        Assert.Equal("application/problem+json", response.Content.Headers.ContentType.MediaType);
+
+        var problem = await response.Content.ReadFromJsonAsync<ApiProblemDetails>();
+        Assert.NotNull(problem);
+        Assert.Equal("VALIDATION_FAILED", problem.Code);
+        Assert.Equal(400, problem.Status);
+        Assert.NotNull(problem.Errors);
+        Assert.Contains(problem.Errors, e => e.Field == "participants[1]");
     }
 
     [Fact]
@@ -157,6 +237,52 @@ public class SessionsEndpointTests : IClassFixture<WebApplicationFactory<Program
         Assert.Equal("VALIDATION_FAILED", problem.Code);
         Assert.NotNull(problem.Errors);
         Assert.Contains(problem.Errors, e => e.Message.Contains("duplicated", StringComparison.OrdinalIgnoreCase));
+    }
+
+    [Fact]
+    public async Task CreateSession_UnsupportedMediaType_Returns415_WithProblemCode()
+    {
+        using var content = new StringContent("plain text body", Encoding.UTF8, "text/plain");
+        var response = await _client.PostAsync("/api/v1/sessions", content);
+
+        Assert.Equal(HttpStatusCode.UnsupportedMediaType, response.StatusCode);
+        Assert.NotNull(response.Content.Headers.ContentType);
+        Assert.Equal("application/problem+json", response.Content.Headers.ContentType.MediaType);
+
+        var problem = await response.Content.ReadFromJsonAsync<ApiProblemDetails>();
+        Assert.NotNull(problem);
+        Assert.Equal(415, problem.Status);
+        Assert.Equal("UNSUPPORTED_MEDIA_TYPE", problem.Code);
+    }
+
+    [Fact]
+    public async Task UnknownRoute_Returns404_WithProblemCode()
+    {
+        var response = await _client.GetAsync("/api/v1/unknown-endpoint");
+
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+        Assert.NotNull(response.Content.Headers.ContentType);
+        Assert.Equal("application/problem+json", response.Content.Headers.ContentType.MediaType);
+
+        var problem = await response.Content.ReadFromJsonAsync<ApiProblemDetails>();
+        Assert.NotNull(problem);
+        Assert.Equal(404, problem.Status);
+        Assert.Equal("NOT_FOUND", problem.Code);
+    }
+
+    [Fact]
+    public async Task UnsupportedMethod_Returns405_WithProblemCode()
+    {
+        var response = await _client.DeleteAsync("/api/v1/sessions");
+
+        Assert.Equal(HttpStatusCode.MethodNotAllowed, response.StatusCode);
+        Assert.NotNull(response.Content.Headers.ContentType);
+        Assert.Equal("application/problem+json", response.Content.Headers.ContentType.MediaType);
+
+        var problem = await response.Content.ReadFromJsonAsync<ApiProblemDetails>();
+        Assert.NotNull(problem);
+        Assert.Equal(405, problem.Status);
+        Assert.Equal("METHOD_NOT_ALLOWED", problem.Code);
     }
 
     [Fact]

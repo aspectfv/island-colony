@@ -20,12 +20,10 @@ public record CreateSessionRecordRequest : IValidatableObject
     [JsonPropertyName("hostPlayerId")]
     public required string HostPlayerId { get; init; }
 
-    [Required]
     [Range(0, 2147483647, ErrorMessage = "worldSeed must be between 0 and 2147483647.")]
     [JsonPropertyName("worldSeed")]
     public required int WorldSeed { get; init; }
 
-    [Required]
     [JsonPropertyName("startedAt")]
     public required DateTimeOffset StartedAt { get; init; }
 
@@ -36,20 +34,18 @@ public record CreateSessionRecordRequest : IValidatableObject
 
     public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
     {
-        if (Participants == null || Participants.Count == 0)
-        {
-            yield return new ValidationResult("participants must contain at least 1 participant.", [nameof(Participants)]);
-            yield break;
-        }
-
-        var playerIds = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var playerIds = new HashSet<string>();
         var slots = new HashSet<int>();
         bool hostFound = false;
 
         for (int i = 0; i < Participants.Count; i++)
         {
             var p = Participants[i];
-            if (p == null) continue;
+            if (p is null)
+            {
+                yield return new ValidationResult("Participant must not be null.", [$"participants[{i}]"]);
+                continue;
+            }
 
             if (!playerIds.Add(p.PlayerId))
             {
@@ -61,7 +57,7 @@ public record CreateSessionRecordRequest : IValidatableObject
                 yield return new ValidationResult($"Participant slot '{p.Slot}' is duplicated.", [$"participants[{i}].slot"]);
             }
 
-            if (string.Equals(p.PlayerId, HostPlayerId, StringComparison.OrdinalIgnoreCase))
+            if (p.PlayerId == HostPlayerId)
             {
                 hostFound = true;
             }
