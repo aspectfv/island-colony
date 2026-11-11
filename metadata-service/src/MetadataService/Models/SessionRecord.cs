@@ -30,5 +30,5 @@ public record SessionRecord
     public int? DurationSeconds { get; init; }
 
     [JsonPropertyName("summary")]
-    public object? Summary { get; init; }
+    public SessionSummary? Summary { get; init; }
 }

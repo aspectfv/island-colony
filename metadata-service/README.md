@@ -9,14 +9,11 @@ ASP.NET Core (.NET 10) microservice storing session metadata, participant record
 
 ## Endpoints
 
-### Stage 1 (issue #11)
 - `GET /health` - Service health check and implemented contracts version.
 - `POST /api/v1/sessions` - Creates an active session record and participant roster. Returns 201 Created with `SessionRecord`, 400 `VALIDATION_FAILED`, or 409 `SESSION_EXISTS`.
+- `GET /api/v1/sessions` - Lists recent sessions (newest `startedAt` first), with optional `status` (`ACTIVE`, `COMPLETED`, `ENDED`) and `limit` (`1..100`, default `20`). Returns 200 OK with `SessionRecordList` or 400 `VALIDATION_FAILED`.
 - `GET /api/v1/sessions/{sessionId}` - Retrieves a session record by its UUID. Returns 200 OK or 404 `SESSION_NOT_FOUND`.
-
-### Stage 2 (future)
-- `POST /api/v1/sessions/{sessionId}/summary` - Records how the session ended.
-- `GET /api/v1/sessions` - Lists recent sessions, newest first.
+- `POST /api/v1/sessions/{sessionId}/summary` - Records how the session ended (accepted once per session). Sets `status` (`COMPLETED` or `ENDED`) and `durationSeconds`. Returns 200 OK with updated `SessionRecord`, 400 `VALIDATION_FAILED`, 404 `SESSION_NOT_FOUND`, or 409 `SUMMARY_EXISTS`.
 
 ## Requirements
 
@@ -36,7 +33,7 @@ The service will start listening on `http://localhost:8084`.
 
 ### Run tests
 
-Run the full xUnit test suite (including WebApplicationFactory HTTP integration tests):
+Run the full xUnit test suite (including WebApplicationFactory HTTP integration tests and JSON Schema contract validation):
 
 ```bash
 dotnet test
