@@ -74,6 +74,17 @@ public class ApiProblemDetails : ProblemDetails
         };
     }
 
+    public static ApiProblemDetails SummaryExists(string sessionId)
+    {
+        return new ApiProblemDetails
+        {
+            Status = StatusCodes.Status409Conflict,
+            Title = "Session Summary Already Exists",
+            Detail = $"A summary has already been recorded for sessionId '{sessionId}'.",
+            Code = "SUMMARY_EXISTS"
+        };
+    }
+
     public static ApiProblemDetails InternalError(string? detail = null)
     {
         return new ApiProblemDetails

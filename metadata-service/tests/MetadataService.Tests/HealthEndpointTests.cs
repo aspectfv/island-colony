@@ -30,6 +30,9 @@ public class HealthEndpointTests : IClassFixture<WebApplicationFactory<Program>>
         Assert.NotNull(response.Content.Headers.ContentType);
         Assert.Equal("application/json", response.Content.Headers.ContentType.MediaType);
 
+        var rawJson = await response.Content.ReadAsStringAsync();
+        ContractSchemaValidator.AssertMatchesCommonDef(rawJson, "Health");
+
         var payload = await response.Content.ReadFromJsonAsync<HealthResponse>();
         Assert.NotNull(payload);
         Assert.Equal("ok", payload.Status);
@@ -55,6 +58,9 @@ public class HealthEndpointTests : IClassFixture<WebApplicationFactory<Program>>
 
         var response = await client.GetAsync("/health");
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+        var rawJson = await response.Content.ReadAsStringAsync();
+        ContractSchemaValidator.AssertMatchesCommonDef(rawJson, "Health");
 
         var payload = await response.Content.ReadFromJsonAsync<HealthResponse>();
         Assert.NotNull(payload);

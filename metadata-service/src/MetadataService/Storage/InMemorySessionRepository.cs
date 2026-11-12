@@ -17,4 +17,25 @@ public class InMemorySessionRepository : ISessionRepository
         _sessions.TryGetValue(sessionId, out var session);
         return session;
     }
+
+    public bool TryUpdateSession(SessionRecord current, SessionRecord updated)
+    {
+        return _sessions.TryUpdate(current.SessionId, updated, current);
+    }
+
+    public IReadOnlyList<SessionRecord> ListSessions(string? status, int limit)
+    {
+        IEnumerable<SessionRecord> query = _sessions.Values;
+
+        if (status is not null)
+        {
+            query = query.Where(s => s.Status == status);
+        }
+
+        return query
+            .OrderByDescending(s => s.StartedAt)
+            .ThenBy(s => s.SessionId, StringComparer.Ordinal)
+            .Take(limit)
+            .ToList();
+    }
 }
