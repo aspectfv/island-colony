@@ -7,24 +7,43 @@ const RIGHT = new Set(["KeyD", "ArrowRight"]);
 
 // Keyboard movement and pointer-locked mouse look. Click the canvas to capture the mouse; Esc releases it.
 export class PlayerInput {
-  public enabled = true;
+  private _enabled = true;
   private readonly pressed = new Set<string>();
   private mouseX = 0;
   private mouseY = 0;
 
   constructor(private readonly canvas: HTMLCanvasElement) {
-    window.addEventListener("keydown", (event) => this.pressed.add(event.code));
+    window.addEventListener("keydown", (event) => {
+      if (!this._enabled) return;
+      this.pressed.add(event.code);
+    });
     window.addEventListener("keyup", (event) => this.pressed.delete(event.code));
     window.addEventListener("blur", () => this.pressed.clear());
     canvas.addEventListener("click", () => {
-      if (!this.enabled) return;
+      if (!this._enabled) return;
       if (document.pointerLockElement !== canvas) void canvas.requestPointerLock();
     });
     document.addEventListener("mousemove", (event) => {
-      if (!this.enabled || document.pointerLockElement !== this.canvas) return;
+      if (!this._enabled || document.pointerLockElement !== this.canvas) return;
       this.mouseX += event.movementX;
       this.mouseY += event.movementY;
     });
+  }
+
+  get enabled(): boolean {
+    return this._enabled;
+  }
+
+  set enabled(value: boolean) {
+    this._enabled = value;
+    if (!value) {
+      this.pressed.clear();
+      this.mouseX = 0;
+      this.mouseY = 0;
+      if (typeof document !== "undefined" && document.pointerLockElement === this.canvas) {
+        document.exitPointerLock?.();
+      }
+    }
   }
 
   moveIntent(): MoveIntent {

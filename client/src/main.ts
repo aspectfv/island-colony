@@ -56,25 +56,36 @@ async function init(): Promise<void> {
   // Background scenic render while in menus
   game.enter(initialWorld, 0);
 
-  if (import.meta.env.DEV && (params.has("demo") || params.has("skip-menu"))) {
-    void startSessionGame(initialWorld, 0);
-  } else {
-    const services = getServices();
-    let uiManager: UIManager | null = null;
-    uiManager = new UIManager(
-      services,
-      async (payload) => {
-        if (!payload.sessionDetails?.worldConfig) {
-          toast.showError("Failed to retrieve world configuration for session.");
-          uiManager?.showMainMenu();
-          return;
-        }
-        await startSessionGame(payload.sessionDetails.worldConfig as WorldConfig, payload.slot);
+  const services = getServices();
+  const startDirectGame = import.meta.env.DEV && (params.has("demo") || params.has("skip-menu"));
+  let uiManager: UIManager | null = null;
+  uiManager = new UIManager(
+    services,
+    async (payload) => {
+      if (!payload.sessionDetails?.worldConfig) {
+        toast.showError("Failed to retrieve world configuration for session.");
+        uiManager?.showMainMenu();
+        return;
+      }
+      await startSessionGame(payload.sessionDetails.worldConfig as WorldConfig, payload.slot);
+    },
+    (screen) => {
+      currentScreenState = screen;
+      if (screen !== "GAME") {
+        input.enabled = false;
+      }
+    },
+    {
+      startInMenu: !startDirectGame,
+      onMenuOpenChange: (isOpen) => {
+        input.enabled = !isOpen && currentScreenState === "GAME";
       },
-      (screen) => {
-        currentScreenState = screen;
-      },
-    );
+    },
+  );
+
+  if (startDirectGame) {
+    await startSessionGame(initialWorld, 0);
+    uiManager.enterLocalGame(true);
   }
 }
 

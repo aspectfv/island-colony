@@ -85,7 +85,7 @@ export class MainMenu {
                 </span>
                 <div class="nav-btn-text">
                   <span class="nav-btn-title">Join Lobby</span>
-                  <span class="nav-btn-desc">Connect with 6-letter lobby code</span>
+                  <span class="nav-btn-desc">Connect with lobby code</span>
                 </div>
               </button>
             </div>

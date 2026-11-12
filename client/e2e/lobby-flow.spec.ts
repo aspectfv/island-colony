@@ -38,8 +38,30 @@ test("full flow: left menu navigation -> create lobby -> lobby screen -> start s
   // Click Start Session
   await page.click("#start-btn");
 
-  // Verify UI screen transitions to game (overlay unmounted)
+  // Verify UI screen transitions to game (overlay hidden)
   await expect(page.locator(".ui-screen")).not.toBeVisible();
+
+  // Press Esc to open the in-game menu; initially shows only Resume and Leave Game
+  await page.keyboard.press("Escape");
+  await expect(page.locator(".in-game-menu-overlay.is-open")).toBeVisible();
+  await expect(page.locator("#ingame-resume-btn")).toBeVisible();
+  await expect(page.locator("#ingame-leave-btn")).toBeVisible();
+  await expect(page.locator("#ingame-host-confirm")).not.toBeVisible();
+
+  // Click Resume to return to the game
+  await page.click("#ingame-resume-btn");
+  await expect(page.locator(".in-game-menu-overlay")).not.toBeVisible();
+
+  // Press Esc again, click Leave Game as host -> see warning -> confirm ending session for everyone
+  await page.keyboard.press("Escape");
+  await expect(page.locator(".in-game-menu-overlay.is-open")).toBeVisible();
+  await page.click("#ingame-leave-btn");
+  await expect(page.locator("#ingame-host-confirm")).toBeVisible();
+  await expect(page.locator("#ingame-host-warning")).toContainText(
+    "When the host leaves, the session will end for everyone.",
+  );
+  await page.click("#ingame-end-session-btn");
+  await expect(page.locator(".main-menu-screen")).toBeVisible();
 
   // Verify no console / page errors
   expect(errors).toEqual([]);
