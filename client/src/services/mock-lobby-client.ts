@@ -13,6 +13,7 @@ import type {
   SessionDetails,
   StartSessionRequest,
 } from "../shared/contracts/lobby";
+import { fixtureWorld } from "../shared/fixture-world";
 import type { LobbyClient } from "./lobby-client";
 import { createProblem, ProblemError } from "./problem";
 
@@ -314,11 +315,12 @@ export class MockLobbyClient implements LobbyClient {
     const sessionId = generateId();
     const now = new Date().toISOString();
     const detailsExample = sessionDetailsExample as SessionDetails;
+    const worldConfig = structuredClone(fixtureWorld);
 
     entry.lobby.status = "IN_PROGRESS";
     entry.lobby.session = {
       sessionId,
-      worldSeed: detailsExample.worldConfig?.seed ?? 19842017,
+      worldSeed: worldConfig.seed,
       startedAt: now,
     };
 
@@ -329,6 +331,7 @@ export class MockLobbyClient implements LobbyClient {
       hostPlayerId: entry.lobby.hostPlayerId,
       startedAt: now,
       players: structuredClone(entry.lobby.players),
+      worldConfig,
     };
 
     entry.sessionDetails = sessionDetails;
