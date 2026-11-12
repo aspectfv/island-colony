@@ -89,7 +89,7 @@ public class SessionsController : ControllerBase
     [ProducesResponseType(typeof(ApiProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ApiProblemDetails), StatusCodes.Status404NotFound)]
     [ProducesResponseType(typeof(ApiProblemDetails), StatusCodes.Status409Conflict)]
-    public IActionResult PostSessionSummary([FromRoute] string sessionId, [FromBody] SessionSummary summary)
+    public IActionResult PostSessionSummary([FromRoute] string sessionId, [FromBody] SessionSummary request)
     {
         var existing = _sessionRepository.GetSession(sessionId);
         if (existing == null)
@@ -102,22 +102,22 @@ public class SessionsController : ControllerBase
             return ApiProblemDetails.SummaryExists(sessionId).ToActionResult();
         }
 
-        var consistencyErrors = summary.ValidateAgainstSession(existing);
+        var consistencyErrors = request.ValidateAgainstSession(existing);
         if (consistencyErrors.Count > 0)
         {
             return ApiProblemDetails.ValidationFailed(consistencyErrors).ToActionResult();
         }
 
-        var newStatus = summary.Outcome == SessionRecordStatus.Completed
+        var newStatus = request.Outcome == SessionOutcome.Completed
             ? SessionRecordStatus.Completed
             : SessionRecordStatus.Ended;
-        var durationSeconds = (int)(summary.EndedAt - existing.StartedAt).TotalSeconds;
+        var durationSeconds = (int)(request.EndedAt - existing.StartedAt).TotalSeconds;
 
         var updated = existing with
         {
             Status = newStatus,
             DurationSeconds = durationSeconds,
-            Summary = summary
+            Summary = request
         };
 
         if (!_sessionRepository.TryUpdateSession(existing, updated))

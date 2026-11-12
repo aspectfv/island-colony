@@ -50,12 +50,12 @@ public partial record SessionSummary : IValidatableObject
         {
             if (!IsValidContentId(resourceKey))
             {
-                yield return new ValidationResult($"Resource key '{resourceKey}' must be a valid lowercase kebab-case ContentId.", [$"totalGathered.{resourceKey}"]);
+                yield return new ValidationResult($"Resource key '{resourceKey}' must be a valid lowercase kebab-case ContentId.", [$"totalGathered[\"{resourceKey}\"]"]);
             }
 
             if (amount < 0)
             {
-                yield return new ValidationResult($"Resource amount for '{resourceKey}' must be non-negative.", [$"totalGathered.{resourceKey}"]);
+                yield return new ValidationResult($"Resource amount for '{resourceKey}' must be non-negative.", [$"totalGathered[\"{resourceKey}\"]"]);
             }
         }
 
@@ -75,22 +75,16 @@ public partial record SessionSummary : IValidatableObject
                 yield return new ValidationResult($"Contribution playerId '{contribution.PlayerId}' is duplicated.", [$"contributions[{i}].playerId"]);
             }
 
-            if (contribution.Gathered is null)
-            {
-                hasNullItem = true;
-                continue;
-            }
-
             foreach (var (resourceKey, amount) in contribution.Gathered)
             {
                 if (!IsValidContentId(resourceKey))
                 {
-                    yield return new ValidationResult($"Resource key '{resourceKey}' must be a valid lowercase kebab-case ContentId.", [$"contributions[{i}].gathered.{resourceKey}"]);
+                    yield return new ValidationResult($"Resource key '{resourceKey}' must be a valid lowercase kebab-case ContentId.", [$"contributions[{i}].gathered[\"{resourceKey}\"]"]);
                 }
 
                 if (amount < 0)
                 {
-                    yield return new ValidationResult($"Resource amount for '{resourceKey}' must be non-negative.", [$"contributions[{i}].gathered.{resourceKey}"]);
+                    yield return new ValidationResult($"Resource amount for '{resourceKey}' must be non-negative.", [$"contributions[{i}].gathered[\"{resourceKey}\"]"]);
                 }
             }
         }
@@ -128,7 +122,7 @@ public partial record SessionSummary : IValidatableObject
             {
                 yield return new ValidationResult(
                     $"Sum of contributions gathered for '{resourceKey}' ({contributedAmount}) must equal totalGathered ({totalAmount}).",
-                    [$"totalGathered.{resourceKey}"]);
+                    [$"totalGathered[\"{resourceKey}\"]"]);
             }
         }
     }
@@ -170,4 +164,3 @@ public partial record SessionSummary : IValidatableObject
         return !string.IsNullOrEmpty(value) && value.Length <= 48 && ContentIdRegex().IsMatch(value);
     }
 }
-

@@ -132,16 +132,46 @@ static string NormalizeFieldName(string field)
         field = field[2..];
     }
 
-    var segments = field.Split('.');
-    for (int i = 0; i < segments.Length; i++)
+    // Lower-case the first letter of each property segment (ASP.NET reports member names in PascalCase),
+    // but leave dictionary keys inside ["..."] exactly as the client sent them, including any dots.
+    var result = new System.Text.StringBuilder(field.Length);
+    bool atSegmentStart = true;
+    bool inQuotedKey = false;
+    for (int i = 0; i < field.Length; i++)
     {
-        var seg = segments[i];
-        if (seg.Length > 0 && char.IsUpper(seg[0]))
+        char c = field[i];
+
+        if (inQuotedKey)
         {
-            segments[i] = char.ToLowerInvariant(seg[0]) + seg[1..];
+            result.Append(c);
+            if (c == '"' && i + 1 < field.Length && field[i + 1] == ']')
+            {
+                inQuotedKey = false;
+            }
+            continue;
         }
+
+        if (c == '[' && i + 1 < field.Length && field[i + 1] == '"')
+        {
+            inQuotedKey = true;
+            result.Append("[\"");
+            i++;
+            atSegmentStart = false;
+            continue;
+        }
+
+        if (c == '.')
+        {
+            atSegmentStart = true;
+            result.Append(c);
+            continue;
+        }
+
+        result.Append(atSegmentStart ? char.ToLowerInvariant(c) : c);
+        atSegmentStart = false;
     }
-    return string.Join('.', segments);
+
+    return result.ToString();
 }
 
 public partial class Program

@@ -5,7 +5,7 @@ namespace MetadataService.Storage;
 
 public class InMemorySessionRepository : ISessionRepository
 {
-    private readonly ConcurrentDictionary<string, SessionRecord> _sessions = new();
+    private readonly ConcurrentDictionary<string, SessionRecord> _sessions = new(StringComparer.OrdinalIgnoreCase);
 
     public bool TryCreateSession(SessionRecord session)
     {
