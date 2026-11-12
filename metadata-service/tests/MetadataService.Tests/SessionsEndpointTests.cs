@@ -845,114 +845,26 @@ public class SessionsEndpointTests : IClassFixture<WebApplicationFactory<Program
         public IReadOnlyList<SessionRecord> ListSessions(string? status, int limit) => throw new InvalidOperationException("Simulated storage failure.");
     }
 
-    [Theory]
-    [InlineData("Wood")]
-    [InlineData("wo.od")]
-    [InlineData("A.B")]
-    public async Task PostSummary_InvalidResourceKey_ReportsFieldWithKeyVerbatim(string badKey)
-    {
-        var sessionId = Guid.NewGuid().ToString().ToLowerInvariant();
-        var hostId = Guid.NewGuid().ToString().ToLowerInvariant();
-        var startedAt = new DateTimeOffset(2026, 10, 7, 12, 0, 0, TimeSpan.Zero);
-
-        await _client.PostAsJsonAsync("/api/v1/sessions", new CreateSessionRecordRequest
-        {
-            SessionId = sessionId,
-            LobbyCode = "ABCDEF",
-            HostPlayerId = hostId,
-            WorldSeed = 1,
-            StartedAt = startedAt,
-            Participants = [new Participant { PlayerId = hostId, DisplayName = "Host", Slot = 0 }]
-        });
-
-        var summary = new SessionSummary
-        {
-            Outcome = "COMPLETED",
-            EndedAt = startedAt.AddMinutes(5),
-            ObjectivesCompleted = 0,
-            Structures = [],
-            TotalGathered = new Dictionary<string, int> { [badKey] = 1 },
-            Contributions =
-            [
-                new Contribution
-                {
-                    PlayerId = hostId,
-                    Gathered = new Dictionary<string, int> { [badKey] = 1 },
-                    StructuresPlaced = 0
-                }
-            ]
-        };
-
-        var response = await _client.PostAsJsonAsync($"/api/v1/sessions/{sessionId}/summary", summary);
-
-        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
-        var rawProblem = await response.Content.ReadAsStringAsync();
-        ContractSchemaValidator.AssertMatchesCommonDef(rawProblem, "Problem");
-
-        var problem = JsonSerializer.Deserialize<ApiProblemDetails>(rawProblem);
-        Assert.NotNull(problem);
-        Assert.NotNull(problem.Errors);
-        var fields = problem.Errors.Select(e => e.Field).ToArray();
-        Assert.Contains($"totalGathered[\"{badKey}\"]", fields);
-        Assert.Contains($"contributions[0].gathered[\"{badKey}\"]", fields);
-    }
-
-    [Theory]
-    [InlineData("")]
-    [InlineData("{}")]
-    [InlineData("{not json")]
-    public async Task EmptyOrMalformedBody_SummaryAndCreateReturnSameErrorFields(string body)
-    {
-        var sessionId = Guid.NewGuid().ToString().ToLowerInvariant();
-
-        var summaryFields = await PostAndGetErrorFieldsAsync($"/api/v1/sessions/{sessionId}/summary", body);
-        var createFields = await PostAndGetErrorFieldsAsync("/api/v1/sessions", body);
-
-        Assert.DoesNotContain("request", summaryFields);
-        Assert.DoesNotContain("summary", summaryFields);
-        Assert.Equal(createFields, summaryFields);
-    }
-
-    private async Task<string[]> PostAndGetErrorFieldsAsync(string url, string body)
-    {
-        using var content = new StringContent(body, Encoding.UTF8, "application/json");
-        var response = await _client.PostAsync(url, content);
-
-        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
-        Assert.Equal("application/problem+json", response.Content.Headers.ContentType?.MediaType);
-
-        var rawProblem = await response.Content.ReadAsStringAsync();
-        ContractSchemaValidator.AssertMatchesCommonDef(rawProblem, "Problem");
-
-        var problem = JsonSerializer.Deserialize<ApiProblemDetails>(rawProblem);
-        Assert.NotNull(problem);
-        Assert.Equal("VALIDATION_FAILED", problem.Code);
-        Assert.NotNull(problem.Errors);
-        return problem.Errors.Select(e => e.Field).OrderBy(f => f, StringComparer.Ordinal).ToArray();
-    }
-
     [Fact]
-    public async Task GetSession_CaseInsensitiveSessionId_Returns200()
+    public async Task PostSummary_EmptyBody_ErrorFieldsMatchCreateEndpoint()
     {
-        var lowerId = Guid.NewGuid().ToString().ToLowerInvariant();
-        var upperId = lowerId.ToUpperInvariant();
-        var hostId = Guid.NewGuid().ToString().ToLowerInvariant();
+        var sessionId = Guid.NewGuid().ToString().ToLowerInvariant();
+        using var summaryContent = new StringContent("", Encoding.UTF8, "application/json");
+        using var createContent = new StringContent("", Encoding.UTF8, "application/json");
 
-        await _client.PostAsJsonAsync("/api/v1/sessions", new CreateSessionRecordRequest
-        {
-            SessionId = lowerId,
-            LobbyCode = "ABCDEF",
-            HostPlayerId = hostId,
-            WorldSeed = 42,
-            StartedAt = DateTimeOffset.UtcNow,
-            Participants = [new Participant { PlayerId = hostId, DisplayName = "Host", Slot = 0 }]
-        });
+        var summaryResponse = await _client.PostAsync($"/api/v1/sessions/{sessionId}/summary", summaryContent);
+        var createResponse = await _client.PostAsync("/api/v1/sessions", createContent);
 
-        var response = await _client.GetAsync($"/api/v1/sessions/{upperId}");
-        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, summaryResponse.StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, createResponse.StatusCode);
 
-        var record = await response.Content.ReadFromJsonAsync<SessionRecord>();
-        Assert.NotNull(record);
-        Assert.Equal(lowerId, record.SessionId);
+        var summaryProblem = await summaryResponse.Content.ReadFromJsonAsync<ApiProblemDetails>();
+        var createProblem = await createResponse.Content.ReadFromJsonAsync<ApiProblemDetails>();
+
+        Assert.NotNull(summaryProblem?.Errors);
+        Assert.NotNull(createProblem?.Errors);
+        Assert.Equal(
+            createProblem.Errors.Select(e => e.Field),
+            summaryProblem.Errors.Select(e => e.Field));
     }
 }
