@@ -1,9 +1,6 @@
 server:
   port: 8081
 
-contracts:
-  version: 1.0.1
-
 world-service:
   url: ${WORLD_SERVICE_URL:http://localhost:8083}
 

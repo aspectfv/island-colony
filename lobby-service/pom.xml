@@ -38,6 +38,18 @@
     </dependencies>
 
     <build>
+        <resources>
+            <resource>
+                <directory>src/main/resources</directory>
+            </resource>
+            <resource>
+                <directory>../contracts</directory>
+                <includes>
+                    <include>VERSION</include>
+                </includes>
+                <targetPath>contracts</targetPath>
+            </resource>
+        </resources>
         <plugins>
             <plugin>
                 <groupId>com.diffplug.spotless</groupId>
