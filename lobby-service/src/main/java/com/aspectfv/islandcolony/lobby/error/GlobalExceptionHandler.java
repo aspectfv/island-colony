@@ -7,6 +7,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.context.request.WebRequest;
@@ -46,7 +47,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
       Exception ex, Object body, HttpHeaders headers, HttpStatusCode statusCode, WebRequest req) {
     int status = statusCode.value();
     HttpStatus resolved = HttpStatus.resolve(status);
-    String detail = status == 400 ? "The request body is missing or malformed." : null;
+    String detail = status == 400 ? badRequestDetail(ex) : null;
     return respond(
         new Problem(
             "about:blank",
@@ -76,6 +77,12 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
       return ErrorCode.INTERNAL_ERROR.title();
     }
     return resolved != null ? resolved.getReasonPhrase() : "HTTP " + status;
+  }
+
+  private static String badRequestDetail(Exception ex) {
+    return ex instanceof HttpMessageNotReadableException
+        ? "The request body is missing or malformed."
+        : "The request is invalid.";
   }
 
   private static ResponseEntity<Object> respond(Problem p, HttpHeaders headers) {

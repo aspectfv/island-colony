@@ -392,4 +392,13 @@ class LobbyApiTest {
   void unknownRouteIs404Problem() throws Exception {
     expectProblem(mvc.perform(get("/nope")), 404, "NOT_FOUND");
   }
+
+  @Test
+  void malformedBodyDetailMentionsBody() throws Exception {
+    expectProblem(
+            mvc.perform(post(BASE).contentType(APPLICATION_JSON).content("not json")),
+            400,
+            "VALIDATION_FAILED")
+        .andExpect(jsonPath("$.detail").value("The request body is missing or malformed."));
+  }
 }
