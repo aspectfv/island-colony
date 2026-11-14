@@ -88,14 +88,14 @@ latest `PLAYER_MOVE` position for the requester. Range checks allow 0.5 m of sla
 
 Checked in this order; the first failure is the rejection code.
 
-| # | Check | Rejection code |
-|---|---|---|
-| 1 | Session status is `ACTIVE` | `SESSION_NOT_ACTIVE` |
-| 2 | Requester has sent `CLIENT_READY` (always true for the host) | `PLAYER_NOT_READY` |
-| 3 | `resourceId` exists in the world config | `RESOURCE_NOT_FOUND` |
-| 4 | Node has charges left | `RESOURCE_DEPLETED` |
-| 5 | Ground distance to the node is at most `rules.gathering.interactionRange` | `OUT_OF_RANGE` |
-| 6 | At least `rules.gathering.cooldownMs` since this player's last accepted gather | `ON_COOLDOWN` |
+| Rule ID | # | Check | Rejection code |
+|---|---|---|---|
+| GP-GATHER-01 | 1 | Session status is `ACTIVE` | `SESSION_NOT_ACTIVE` |
+| GP-GATHER-02 | 2 | Requester has sent `CLIENT_READY` (always true for the host) | `PLAYER_NOT_READY` |
+| GP-GATHER-03 | 3 | `resourceId` exists in the world config | `RESOURCE_NOT_FOUND` |
+| GP-GATHER-04 | 4 | Node has charges left | `RESOURCE_DEPLETED` |
+| GP-GATHER-05 | 5 | Ground distance to the node is at most `rules.gathering.interactionRange` | `OUT_OF_RANGE` |
+| GP-GATHER-06 | 6 | At least `rules.gathering.cooldownMs` since this player's last accepted gather | `ON_COOLDOWN` |
 
 On success the host takes one charge, adds `yieldPerGather` of the node type's resource to the
 shared total, and broadcasts `RESOURCE_GATHERED`. A node with 0 charges left is depleted: clients
@@ -103,25 +103,25 @@ remove it and it no longer blocks placement.
 
 ### `PLACE_BUILDING`
 
-| # | Check | Rejection code |
-|---|---|---|
-| 1 | Session status is `ACTIVE` | `SESSION_NOT_ACTIVE` |
-| 2 | Requester has sent `CLIENT_READY` (always true for the host) | `PLAYER_NOT_READY` |
-| 3 | The current objective is `BUILD` with this `structureType` | `STRUCTURE_NOT_AVAILABLE` |
-| 4 | Shared totals cover the structure's `cost` | `INSUFFICIENT_RESOURCES` |
-| 5 | Ground distance to `position` is at most `rules.building.placementRange` | `OUT_OF_RANGE` |
-| 6 | The footprint circle lies inside one build zone: `distance(position, zone.center) + footprintRadius <= zone.radius` | `INVALID_PLACEMENT` |
-| 7 | The footprint does not overlap a placed structure or a non-depleted node (distance between centers less than the sum of radii) | `INVALID_PLACEMENT` |
+| Rule ID | # | Check | Rejection code |
+|---|---|---|---|
+| GP-PLACE-01 | 1 | Session status is `ACTIVE` | `SESSION_NOT_ACTIVE` |
+| GP-PLACE-02 | 2 | Requester has sent `CLIENT_READY` (always true for the host) | `PLAYER_NOT_READY` |
+| GP-PLACE-03 | 3 | The current objective is `BUILD` with this `structureType` | `STRUCTURE_NOT_AVAILABLE` |
+| GP-PLACE-04 | 4 | Shared totals cover the structure's `cost` | `INSUFFICIENT_RESOURCES` |
+| GP-PLACE-05 | 5 | Ground distance to `position` is at most `rules.building.placementRange` | `OUT_OF_RANGE` |
+| GP-PLACE-06 | 6 | The footprint circle lies inside one build zone: `distance(position, zone.center) + footprintRadius <= zone.radius` | `INVALID_PLACEMENT` |
+| GP-PLACE-07 | 7 | The footprint does not overlap a placed structure or a non-depleted node (distance between centers less than the sum of radii) | `INVALID_PLACEMENT` |
 
 On success the host deducts the cost, assigns the next `structure-<n>` ID, and broadcasts
 `BUILDING_PLACED`.
 
 ### Other rejection codes
 
-| Code | When |
-|---|---|
-| `BAD_REQUEST` | A known request type is malformed. Only sent if a `requestId` can be read |
-| `DUPLICATE_REQUEST` | The requester already used this `requestId` in this session. Nothing is applied |
+| Rule ID | Code | When |
+|---|---|---|
+| GP-REJECT-01 | `BAD_REQUEST` | A known request type is malformed. Only sent if a `requestId` can be read |
+| GP-REJECT-02 | `DUPLICATE_REQUEST` | The requester already used this `requestId` in this session. Nothing is applied |
 
 Unknown codes must be handled with a generic "action failed" message.
 
@@ -130,10 +130,10 @@ Unknown codes must be handled with a generic "action failed" message.
 `objectiveIndex` points into `rules.objectives`. After each accepted gather or placement, the host
 checks the current objective:
 
-| Kind | Complete when |
-|---|---|
-| `GATHER` | Every amount in `target` is at most the shared total. Nothing is deducted |
-| `BUILD` | A structure of `structureType` was just placed |
+| Rule ID | Kind | Complete when |
+|---|---|---|
+| GP-OBJECTIVE-01 | `GATHER` | Every amount in `target` is at most the shared total. Nothing is deducted |
+| GP-OBJECTIVE-02 | `BUILD` | A structure of `structureType` was just placed |
 
 When it completes, the host increments `objectiveIndex` and broadcasts `OBJECTIVE_UPDATED`. It
 then checks the new objective right away, since a `GATHER` target may already be met. When the
@@ -158,11 +158,11 @@ The host does not validate movement in the MVP. Anti-cheat is out of scope.
 
 ## Disconnects
 
-| Event | Host does | Peers do |
-|---|---|---|
-| A peer's connection closes | Broadcasts `PLAYER_LEFT` with reason `DISCONNECTED` and forgets the player | Remove the avatar |
-| The host's connection closes before `SESSION_COMPLETED` or `SESSION_ENDED` | n/a | Show "Host left", return to the main menu |
-| The host's connection closes after either of those | n/a | Nothing; stay on the session-complete screen |
+| Rule ID | Event | Host does | Peers do |
+|---|---|---|---|
+| GP-DISCONNECT-01 | A peer's connection closes | Broadcasts `PLAYER_LEFT` with reason `DISCONNECTED` and forgets the player | Remove the avatar |
+| GP-DISCONNECT-02 | The host's connection closes before `SESSION_COMPLETED` or `SESSION_ENDED` | n/a | Show "Host left", return to the main menu |
+| GP-DISCONNECT-03 | The host's connection closes after either of those | n/a | Nothing; stay on the session-complete screen |
 
 ## Unknown and unexpected messages
 

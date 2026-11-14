@@ -4,6 +4,7 @@
   "type": "module",
   "scripts": {
     "test": "node scripts/validate.mjs",
+    "trace": "node scripts/trace.mjs",
     "lint": "redocly lint openapi/lobby.openapi.yaml openapi/world.openapi.yaml openapi/metadata.openapi.yaml"
   },
   "devDependencies": {

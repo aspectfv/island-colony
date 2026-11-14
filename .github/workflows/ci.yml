@@ -84,6 +84,21 @@ jobs:
       - name: Lint OpenAPI
         run: npm run lint
 
+  # Rule IDs cited in any test must exist in a rule table in contracts/docs. Runs on every change,
+  # since a test anywhere in the repo can cite a rule.
+  trace:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: contracts
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+      - name: Rule IDs link to rule tables
+        run: npm run trace
+
   client:
     needs: changes
     if: needs.changes.outputs.client == 'true'
@@ -180,7 +195,7 @@ jobs:
   # The only required check. Skipped jobs count as passing, so PRs that touch one area are not
   # held up by checks for the others.
   ci-passed:
-    needs: [changes, contracts, client, lobby, signaling, world, metadata]
+    needs: [changes, contracts, trace, client, lobby, signaling, world, metadata]
     if: always()
     runs-on: ubuntu-latest
     steps:

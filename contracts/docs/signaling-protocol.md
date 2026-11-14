@@ -43,15 +43,15 @@ receiver always knows the sender and cannot be told a false one.
 
 ## Error codes
 
-| Code | Meaning |
-|---|---|
-| `INVALID_MESSAGE` | Not JSON, missing required fields, or too large |
-| `UNKNOWN_TYPE` | `type` is not a client message this server knows |
-| `NOT_JOINED` | Sent something before `JOIN` |
-| `ALREADY_JOINED` | Sent `JOIN` twice |
-| `ROOM_FULL` | Room already has 5 players |
-| `PLAYER_ALREADY_CONNECTED` | Another socket is using this `playerId` in this room |
-| `PEER_NOT_FOUND` | `to` is not in the room |
+| Rule ID | Code | Meaning |
+|---|---|---|
+| SIG-ERROR-01 | `INVALID_MESSAGE` | Not JSON, missing required fields, or too large |
+| SIG-ERROR-02 | `UNKNOWN_TYPE` | `type` is not a client message this server knows |
+| SIG-ERROR-03 | `NOT_JOINED` | Sent something before `JOIN` |
+| SIG-ERROR-04 | `ALREADY_JOINED` | Sent `JOIN` twice |
+| SIG-ERROR-05 | `ROOM_FULL` | Room already has 5 players |
+| SIG-ERROR-06 | `PLAYER_ALREADY_CONNECTED` | Another socket is using this `playerId` in this room |
+| SIG-ERROR-07 | `PEER_NOT_FOUND` | `to` is not in the room |
 
 ## Client rules
 
