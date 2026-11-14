@@ -16,6 +16,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -89,8 +91,13 @@ class LobbyApiTest {
   // ---------- health + CORS ----------
 
   @Test
-  void healthReturnsOk() throws Exception {
-    mvc.perform(get("/health")).andExpect(status().isOk());
+  void healthReportsContractsVersionFromContractsFile() throws Exception {
+    String expected = Files.readString(Path.of("..", "contracts", "VERSION")).strip();
+    mvc.perform(get("/health"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.status").value("ok"))
+        .andExpect(jsonPath("$.service").value("lobby-service"))
+        .andExpect(jsonPath("$.contractsVersion").value(expected));
   }
 
   @Test
