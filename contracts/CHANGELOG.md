@@ -3,6 +3,13 @@
 Contract versions follow semver. See `docs/extending.md` for what counts as a patch, minor, or
 major change.
 
+## 1.0.2 (2026-11-14)
+
+- Rule tables in `docs/` gained a `Rule ID` column, and the world config guarantees became a table
+  with IDs. No rule changed
+- Added `docs/invariants.md` with IDs for the rules that cross every service
+- Added `scripts/trace.mjs` (`npm run trace`), which checks rule IDs cited in tests
+
 ## 1.0.1 (2026-10-07)
 
 - Moved the reference terrain sampler to `scripts/sample-height.mjs` so service and client tests

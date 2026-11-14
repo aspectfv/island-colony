@@ -19,32 +19,32 @@ stateDiagram-v2
 
 ## Members
 
-| Rule | Detail |
-|---|---|
-| Capacity | `maxPlayers` is 5 |
-| Slots | The creator is host in slot 0. Joiners take the lowest free slot |
-| Names | Trimmed, 1 to 16 characters, unique per lobby ignoring case (`NAME_TAKEN`) |
-| Joining | Only while `WAITING` (`LOBBY_NOT_WAITING`) |
-| Token | `playerToken` is returned once, in `LobbyMembership`, and never appears in `Lobby` |
+| Rule ID | Rule | Detail |
+|---|---|---|
+| LOBBY-MEMBER-01 | Capacity | `maxPlayers` is 5 |
+| LOBBY-MEMBER-02 | Slots | The creator is host in slot 0. Joiners take the lowest free slot |
+| LOBBY-MEMBER-03 | Names | Trimmed, 1 to 16 characters, unique per lobby ignoring case (`NAME_TAKEN`) |
+| LOBBY-MEMBER-04 | Joining | Only while `WAITING` (`LOBBY_NOT_WAITING`) |
+| LOBBY-MEMBER-05 | Token | `playerToken` is returned once, in `LobbyMembership`, and never appears in `Lobby` |
 
 ## Heartbeat and polling
 
 Clients poll `GET /api/v1/lobbies/{code}` with their `X-Player-Token`. Each authenticated poll
 records that player as seen.
 
-| Status | Client polls every | Lobby service does |
-|---|---|---|
-| `WAITING` | 1 s | Removes a member not seen for 15 s. If that member is the host, the lobby ends with `HOST_LEFT` |
-| `IN_PROGRESS` | 5 s | Ends the lobby with `HOST_DISCONNECTED` if the host is not seen for 30 s. Other members are not removed |
+| Rule ID | Status | Client polls every | Lobby service does |
+|---|---|---|---|
+| LOBBY-HEARTBEAT-01 | `WAITING` | 1 s | Removes a member not seen for 15 s. If that member is the host, the lobby ends with `HOST_LEFT` |
+| LOBBY-HEARTBEAT-02 | `IN_PROGRESS` | 5 s | Ends the lobby with `HOST_DISCONNECTED` if the host is not seen for 30 s. Other members are not removed |
 
 ## Authorization
 
-| Endpoint | Token |
-|---|---|
-| Create, join, get session, health | None |
-| Get lobby | Optional; when present it counts as a heartbeat |
-| Leave | Required. A player can remove itself; the host can remove anyone |
-| Start, end | Required, must be the host (`NOT_HOST`) |
+| Rule ID | Endpoint | Token |
+|---|---|---|
+| LOBBY-AUTH-01 | Create, join, get session, health | None |
+| LOBBY-AUTH-02 | Get lobby | Optional; when present it counts as a heartbeat |
+| LOBBY-AUTH-03 | Leave | Required. A player can remove itself; the host can remove anyone |
+| LOBBY-AUTH-04 | Start, end | Required, must be the host (`NOT_HOST`) |
 
 A missing token, or one that does not belong to this lobby, is 401 `INVALID_PLAYER_TOKEN`. That
 includes polling after being removed for a missed heartbeat: the client shows "You were removed
@@ -73,22 +73,22 @@ The world service URL is configuration (`WORLD_SERVICE_URL`, default `http://loc
 
 ## Error codes
 
-| Status | Code | When |
-|---|---|---|
-| 400 | `VALIDATION_FAILED` | Body or path fails validation |
-| 401 | `INVALID_PLAYER_TOKEN` | Token missing or not a member |
-| 403 | `NOT_HOST` | Host-only action by a non-host |
-| 403 | `FORBIDDEN` | Removing another player without being host |
-| 404 | `LOBBY_NOT_FOUND` | No live lobby with this code |
-| 404 | `PLAYER_NOT_FOUND` | Player is not in this lobby |
-| 409 | `LOBBY_FULL` | Already 5 members |
-| 409 | `LOBBY_NOT_WAITING` | Join or start after the session started or ended |
-| 409 | `LOBBY_CHANGED` | Start with `expectedPlayerIds` that differ from the members |
-| 409 | `NAME_TAKEN` | Name already used in this lobby |
-| 409 | `SESSION_NOT_STARTED` | Get session before start |
-| 409 | `SESSION_NOT_IN_PROGRESS` | End when not `IN_PROGRESS` |
-| 502 | `WORLD_SERVICE_UNAVAILABLE` | World service failed or timed out |
-| 500 | `INTERNAL_ERROR` | Anything unexpected |
+| Rule ID | Status | Code | When |
+|---|---|---|---|
+| LOBBY-ERROR-01 | 400 | `VALIDATION_FAILED` | Body or path fails validation |
+| LOBBY-ERROR-02 | 401 | `INVALID_PLAYER_TOKEN` | Token missing or not a member |
+| LOBBY-ERROR-03 | 403 | `NOT_HOST` | Host-only action by a non-host |
+| LOBBY-ERROR-04 | 403 | `FORBIDDEN` | Removing another player without being host |
+| LOBBY-ERROR-05 | 404 | `LOBBY_NOT_FOUND` | No live lobby with this code |
+| LOBBY-ERROR-06 | 404 | `PLAYER_NOT_FOUND` | Player is not in this lobby |
+| LOBBY-ERROR-07 | 409 | `LOBBY_FULL` | Already 5 members |
+| LOBBY-ERROR-08 | 409 | `LOBBY_NOT_WAITING` | Join or start after the session started or ended |
+| LOBBY-ERROR-09 | 409 | `LOBBY_CHANGED` | Start with `expectedPlayerIds` that differ from the members |
+| LOBBY-ERROR-10 | 409 | `NAME_TAKEN` | Name already used in this lobby |
+| LOBBY-ERROR-11 | 409 | `SESSION_NOT_STARTED` | Get session before start |
+| LOBBY-ERROR-12 | 409 | `SESSION_NOT_IN_PROGRESS` | End when not `IN_PROGRESS` |
+| LOBBY-ERROR-13 | 502 | `WORLD_SERVICE_UNAVAILABLE` | World service failed or timed out |
+| LOBBY-ERROR-14 | 500 | `INTERNAL_ERROR` | Anything unexpected |
 
 ## Storage
 

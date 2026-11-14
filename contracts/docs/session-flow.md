@@ -73,16 +73,16 @@ A solo player runs the same flow with no peers: steps 4 to 6 and 9 to 10 have no
 
 ## Failure paths
 
-| Situation | Who notices | What happens |
-|---|---|---|
-| Peer closes the tab in the lobby | Lobby service (missed heartbeats), host (signaling `PEER_LEFT`) | Peer removed after 15 s; host drops the connection |
-| Peer disconnects in game | Host (channel closes) | Host broadcasts `PLAYER_LEFT`; the session continues |
-| Host disconnects in game | Peers (channel closes) | Peers show "Host left" and return to the main menu; the lobby service ends the lobby with `HOST_DISCONNECTED` after 30 s without a heartbeat |
-| Host ends the game | Host | Host broadcasts `SESSION_ENDED`, posts a summary with outcome `HOST_ENDED`, ends the lobby |
-| Peer connection fails to open | Peer | Peer rejoins the signaling room so the host offers again; after 3 failures it shows a connection error |
-| Someone joins or leaves as the host presses Start | Lobby service | Start returns 409 `LOBBY_CHANGED`; the host retries after the next poll |
-| World service is down at start | Lobby service | Start returns 502 `WORLD_SERVICE_UNAVAILABLE`; the lobby stays `WAITING` |
-| Metadata service is down | Host | Host logs the failure and continues. Metadata never blocks gameplay |
-| Lobby service is down | Client | Integrated mode shows an error on the menu. Development modes fall back to the mock |
+| Rule ID | Situation | Who notices | What happens |
+|---|---|---|---|
+| FLOW-FAILURE-01 | Peer closes the tab in the lobby | Lobby service (missed heartbeats), host (signaling `PEER_LEFT`) | Peer removed after 15 s; host drops the connection |
+| FLOW-FAILURE-02 | Peer disconnects in game | Host (channel closes) | Host broadcasts `PLAYER_LEFT`; the session continues |
+| FLOW-FAILURE-03 | Host disconnects in game | Peers (channel closes) | Peers show "Host left" and return to the main menu; the lobby service ends the lobby with `HOST_DISCONNECTED` after 30 s without a heartbeat |
+| FLOW-FAILURE-04 | Host ends the game | Host | Host broadcasts `SESSION_ENDED`, posts a summary with outcome `HOST_ENDED`, ends the lobby |
+| FLOW-FAILURE-05 | Peer connection fails to open | Peer | Peer rejoins the signaling room so the host offers again; after 3 failures it shows a connection error |
+| FLOW-FAILURE-06 | Someone joins or leaves as the host presses Start | Lobby service | Start returns 409 `LOBBY_CHANGED`; the host retries after the next poll |
+| FLOW-FAILURE-07 | World service is down at start | Lobby service | Start returns 502 `WORLD_SERVICE_UNAVAILABLE`; the lobby stays `WAITING` |
+| FLOW-FAILURE-08 | Metadata service is down | Host | Host logs the failure and continues. Metadata never blocks gameplay |
+| FLOW-FAILURE-09 | Lobby service is down | Client | Integrated mode shows an error on the menu. Development modes fall back to the mock |
 
 Host migration and reconnection are out of scope for the MVP.

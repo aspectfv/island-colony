@@ -83,9 +83,10 @@ How the host applies these is in `gameplay-protocol.md`.
 The world service must produce configs that satisfy these, and its own tests should check them
 the same way:
 
-1. `heights` has exactly `resolution²` values.
-2. Every spawn point, build zone center, and resource node is on land.
-3. Every node's `position.y` is within 0.05 m of the sampled terrain height.
-4. No node footprint overlaps a build zone.
-5. IDs are unique, and every resource, node type, and structure reference points at a defined
-   entry.
+| Rule ID | Guarantee |
+|---|---|
+| WORLD-CONFIG-01 | `heights` has exactly `resolution²` values |
+| WORLD-CONFIG-02 | Every spawn point, build zone center, and resource node is on land |
+| WORLD-CONFIG-03 | Every node's `position.y` is within 0.05 m of the sampled terrain height |
+| WORLD-CONFIG-04 | No node footprint overlaps a build zone |
+| WORLD-CONFIG-05 | IDs are unique, and every resource, node type, and structure reference points at a defined entry |

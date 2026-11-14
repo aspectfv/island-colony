@@ -9,7 +9,7 @@ Current version: see `VERSION`. History: `CHANGELOG.md`.
 
 | If you work on | Read |
 |---|---|
-| Anything | `docs/conventions.md`, `docs/session-flow.md` |
+| Anything | `docs/conventions.md`, `docs/session-flow.md`, `docs/invariants.md` |
 | Client rendering | `docs/world-config.md` |
 | Client gameplay or host logic | `docs/gameplay-protocol.md`, `docs/world-config.md` |
 | Client networking | `docs/signaling-protocol.md`, `docs/gameplay-protocol.md` |
@@ -30,6 +30,7 @@ Current version: see `VERSION`. History: `CHANGELOG.md`.
 | `docs/` | Flows and rules that schemas cannot express |
 | `scripts/validate.mjs` | Checks every example against its schema and checks world and summary invariants |
 | `scripts/sample-height.mjs` | Reference terrain sampler. Import it in tests to check your own sampler |
+| `scripts/trace.mjs` | Checks that rule IDs cited in tests exist, and lists rules no test covers yet |
 
 ## Using the contracts in a service
 
@@ -51,6 +52,18 @@ Run from `contracts/`. Needs Node 22 or later.
 | Install | `npm install` |
 | Validate examples and world invariants | `npm test` |
 | Lint the OpenAPI files | `npm run lint` |
+| Check rule IDs in tests | `npm run trace` |
+
+## Rule IDs
+
+Every rule table in `docs/` has a `Rule ID` column, and `docs/invariants.md` lists the rules that
+cross every service. A test that checks a rule starts its name with the rule's ID, for example
+`it("GP-GATHER-04: rejects a depleted node", ...)`. `docs/invariants.md` shows the form for each
+stack.
+
+To add a rule, add a row with the next free ID in its table, then tag the test that checks it.
+CI fails when a test cites an ID that no table defines. Rules without a test are listed as not
+built and do not fail CI yet.
 
 ## Rules
 

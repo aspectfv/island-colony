@@ -69,15 +69,15 @@ These rules are what let one service change without breaking another.
 
 ## REST
 
-| Topic | Rule |
-|---|---|
-| Base path | `/api/v1`. The major version is in the path |
-| Success bodies | `application/json` |
-| Errors | `application/problem+json` using `Problem` from `schemas/common.schema.json` (RFC 9457 plus a required `code`) |
-| Validation failures | Status 400, code `VALIDATION_FAILED`, field details in `errors`. Map framework defaults to this, for example FastAPI's 422 and ASP.NET's `ValidationProblemDetails` |
-| Unexpected failures | Status 500, code `INTERNAL_ERROR` |
-| Health | `GET /health` returns `Health` on every service, outside `/api/v1` |
-| Auth | Only the lobby service checks anything: the `X-Player-Token` header. Other services trust callers in the MVP |
+| Rule ID | Topic | Rule |
+|---|---|---|
+| CONV-REST-01 | Base path | `/api/v1`. The major version is in the path |
+| CONV-REST-02 | Success bodies | `application/json` |
+| CONV-REST-03 | Errors | `application/problem+json` using `Problem` from `schemas/common.schema.json` (RFC 9457 plus a required `code`) |
+| CONV-REST-04 | Validation failures | Status 400, code `VALIDATION_FAILED`, field details in `errors`. Map framework defaults to this, for example FastAPI's 422 and ASP.NET's `ValidationProblemDetails` |
+| CONV-REST-05 | Unexpected failures | Status 500, code `INTERNAL_ERROR` |
+| CONV-REST-06 | Health | `GET /health` returns `Health` on every service, outside `/api/v1` |
+| CONV-REST-07 | Auth | Only the lobby service checks anything: the `X-Player-Token` header. Other services trust callers in the MVP |
 
 Every error a client may need to react to has a stable `code`. Clients branch on `code`, never on
 `title` or `detail`. `detail` is safe to show to the player.
