@@ -178,6 +178,25 @@ class LobbyApiTest {
         .andExpect(status().isCreated());
   }
 
+  @ParameterizedTest
+  @ValueSource(strings = {"\u00A0\u00A0", "\u3000\u3000", "\u2007 \u202F"})
+  void createRejectsNamesMadeOfUnicodeSpaces(String name) throws Exception {
+    expectProblem(postName(BASE, name), 400, "VALIDATION_FAILED");
+  }
+
+  @Test
+  void createTrimsUnicodeSpacesAroundName() throws Exception {
+    postName(BASE, "\u3000Bob\u00A0")
+        .andExpect(status().isCreated())
+        .andExpect(jsonPath("$.lobby.players[0].displayName").value("Bob"));
+  }
+
+  @Test
+  void joinTreatsNameWithUnicodeSpacesAsDuplicate() throws Exception {
+    String code = code(create("Bob"));
+    expectProblem(postName(BASE + "/" + code + "/players", " Bob\u3000"), 409, "NAME_TAKEN");
+  }
+
   // ---------- get ----------
 
   @Test
