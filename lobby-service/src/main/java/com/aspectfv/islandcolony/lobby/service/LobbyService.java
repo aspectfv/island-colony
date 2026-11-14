@@ -73,7 +73,7 @@ public class LobbyService {
             ErrorCode.NAME_TAKEN, "The name \"" + name + "\" is already used.");
       }
       PlayerRecord player = newPlayer(name, slot);
-      lobby.players().add(player);
+      lobby.addPlayer(player);
       return membership(lobby, player);
     }
   }
@@ -95,14 +95,9 @@ public class LobbyService {
                       () ->
                           new LobbyException(
                               ErrorCode.PLAYER_NOT_FOUND, "That player is not in this lobby."));
-      lobby.players().remove(target);
-      if (target.playerId().equals(lobby.hostPlayerId()) && lobby.status() == LobbyStatus.WAITING) {
-        lobby.end("HOST_LEFT");
-      }
+      lobby.removePlayer(target);
     }
   }
-
-  // ---- helpers ----
 
   private LobbyRecord find(String code) {
     String normalized = code == null ? "" : code.toUpperCase(Locale.ROOT);

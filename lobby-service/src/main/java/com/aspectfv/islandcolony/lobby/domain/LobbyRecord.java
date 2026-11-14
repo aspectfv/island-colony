@@ -4,6 +4,7 @@ import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
@@ -51,7 +52,37 @@ public class LobbyRecord {
   }
 
   public List<PlayerRecord> players() {
-    return players;
+    return Collections.unmodifiableList(players);
+  }
+
+  /**
+   * Adds a joining player. Callers check first to report friendly errors; this guards the rules.
+   */
+  public void addPlayer(PlayerRecord player) {
+    if (status != LobbyStatus.WAITING) {
+      throw new IllegalStateException("Lobby is not waiting");
+    }
+    if (players.size() >= maxPlayers) {
+      throw new IllegalStateException("Lobby is full");
+    }
+    boolean slotInvalid = player.slot() < 0 || player.slot() >= maxPlayers;
+    if (slotInvalid || players.stream().anyMatch(p -> p.slot() == player.slot())) {
+      throw new IllegalStateException("Slot " + player.slot() + " is not available");
+    }
+    if (isNameTaken(player.displayName())) {
+      throw new IllegalStateException("Name is already taken");
+    }
+    players.add(player);
+  }
+
+  /** Removes a player. The host leaving a waiting lobby ends it. */
+  public void removePlayer(PlayerRecord player) {
+    if (!players.remove(player)) {
+      return;
+    }
+    if (player.playerId().equals(hostPlayerId) && status == LobbyStatus.WAITING) {
+      end("HOST_LEFT");
+    }
   }
 
   public void end(String reason) {
