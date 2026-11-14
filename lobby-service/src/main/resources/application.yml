@@ -9,8 +9,3 @@ world-service:
 
 cors:
   allowed-origins: ${ALLOWED_ORIGINS:http://localhost:5173}
-
-logging:
-  level:
-    org.springframework.web: DEBUG
-    org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerMapping: TRACE
