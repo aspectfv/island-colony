@@ -1,0 +1,8 @@
+server:
+  port: 8081
+
+world-service:
+  url: ${WORLD_SERVICE_URL:http://localhost:8083}
+
+cors:
+  allowed-origins: ${ALLOWED_ORIGINS:http://localhost:5173}

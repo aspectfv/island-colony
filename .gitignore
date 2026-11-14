@@ -39,3 +39,6 @@ obj/
 # Playwright
 playwright-report/
 test-results/
+
+# Context dumps
+repomix-output.xml
