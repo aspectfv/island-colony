@@ -120,7 +120,7 @@ public class LobbyService {
   }
 
   private static String validateName(String raw) {
-    String name = raw == null ? "" : raw.trim();
+    String name = raw == null ? "" : trimSpaces(raw);
     int length = name.codePointCount(0, name.length());
     if (length < 1 || length > 16) {
       throw new LobbyException(
@@ -129,6 +129,26 @@ public class LobbyService {
           List.of(new LobbyException.FieldIssue("/displayName", "must be 1 to 16 characters")));
     }
     return name;
+  }
+
+  /**
+   * Trims leading and trailing whitespace and Unicode space separators. String.trim() only strips
+   * up to U+0020, and String.strip() leaves non-breaking spaces (U+00A0, U+2007, U+202F) alone.
+   */
+  private static String trimSpaces(String s) {
+    int start = 0;
+    int end = s.length();
+    while (start < end && isSpace(s.charAt(start))) {
+      start++;
+    }
+    while (end > start && isSpace(s.charAt(end - 1))) {
+      end--;
+    }
+    return s.substring(start, end);
+  }
+
+  private static boolean isSpace(char c) {
+    return Character.isWhitespace(c) || Character.isSpaceChar(c);
   }
 
   private PlayerRecord newPlayer(String name, int slot) {
