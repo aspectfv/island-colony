@@ -370,4 +370,26 @@ class LobbyApiTest {
         404,
         "PLAYER_NOT_FOUND");
   }
+
+  // ---------- framework errors ----------
+
+  @Test
+  void wrongMethodIs405WithAllowHeader() throws Exception {
+    expectProblem(mvc.perform(delete(BASE)), 405, "METHOD_NOT_ALLOWED")
+        .andExpect(header().exists("Allow"));
+  }
+
+  @Test
+  void unsupportedMediaTypeIs415() throws Exception {
+    expectProblem(
+        mvc.perform(
+            post(BASE).contentType(org.springframework.http.MediaType.TEXT_PLAIN).content("x")),
+        415,
+        "UNSUPPORTED_MEDIA_TYPE");
+  }
+
+  @Test
+  void unknownRouteIs404Problem() throws Exception {
+    expectProblem(mvc.perform(get("/nope")), 404, "NOT_FOUND");
+  }
 }
